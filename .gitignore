@@ -9,3 +9,6 @@ dados_app/
 frontend/node_modules/
 frontend/dist/
 .claude/
+frontend/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts

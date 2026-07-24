@@ -38,7 +38,9 @@
 - **Windows 10/11** (o app abre numa janela do Microsoft Edge em modo aplicativo).
 - **Python 3.11+** (testado em 3.13).
 - **Node.js 18+** (apenas para compilar a interface).
-- **ffmpeg** disponível no sistema (para ler áudio/vídeo).
+- **ffmpeg** — usado para ler áudio/vídeo e baixar de links. Na versão portátil ele já vem
+  **embutido** na pasta (`ferramentas/ffmpeg`); instalando a partir do código, tenha o ffmpeg no
+  sistema (ex.: `winget install Gyan.FFmpeg`).
 - **GPU NVIDIA** é opcional, mas deixa a transcrição bem mais rápida.
 
 ---
@@ -111,6 +113,17 @@ Rode `transcrever.py --help` para ver todas.
 
 Documentação detalhada em [`DOCUMENTACAO.md`](DOCUMENTACAO.md) (CLI) e
 [`DOCUMENTACAO_APP.md`](DOCUMENTACAO_APP.md) (aplicativo).
+
+---
+
+## 📦 Instalação portátil e desinstalação
+
+O aplicativo é **portátil e autossuficiente**: tudo — programa, modelos, dados e ffmpeg — fica
+dentro de uma única pasta. Não mexe no registro do Windows nem espalha arquivos pelo sistema.
+Recomenda-se mantê-lo **fora do OneDrive** (ex.: `C:\Transkript.ai`), para o OneDrive não
+sincronizar/bloquear os arquivos.
+
+**Para desinstalar, basta apagar a pasta.** Detalhes em [`COMO_DESINSTALAR.txt`](COMO_DESINSTALAR.txt).
 
 ---
 

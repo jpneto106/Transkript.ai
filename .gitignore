@@ -4,3 +4,8 @@ entrada/*
 saida/
 __pycache__/
 *.pyc
+.pytest_cache/
+dados_app/
+frontend/node_modules/
+frontend/dist/
+.claude/

@@ -1,32 +1,32 @@
 #!/usr/bin/env python3
-"""Transcritor de vídeos e áudios usando Whisper (faster-whisper)."""
+"""Transcritor de vídeos e áudios usando Whisper (faster-whisper).
+
+Interface de linha de comando. Toda a lógica de transcrição vive no pacote `nucleo/`,
+compartilhado com a API do aplicativo desktop.
+"""
 
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
-import time
-from dataclasses import dataclass, field
 from pathlib import Path
 
-
-def _registrar_dlls_nvidia() -> None:
-    """No Windows, as DLLs de cuBLAS/cuDNN instaladas via pip (nvidia-*-cu12) ficam
-    dentro de site-packages e o ctranslate2 só as encontra se estiverem no PATH
-    (os.add_dll_directory não é suficiente para os LoadLibrary internos dele)."""
-    if os.name != "nt":
-        return
-    base = Path(sys.prefix) / "Lib" / "site-packages" / "nvidia"
-    if not base.is_dir():
-        return
-    pastas = [str(p) for p in base.glob("*/bin")]
-    if pastas:
-        os.environ["PATH"] = os.pathsep.join(pastas) + os.pathsep + os.environ.get("PATH", "")
-
-
-_registrar_dlls_nvidia()
+# Importar o núcleo já aplica o workaround de DLLs da NVIDIA no Windows (ver nucleo/__init__.py).
+import nucleo
+from nucleo import (
+    FORMATOS_DISPONIVEIS,
+    MODELOS_DISPONIVEIS,
+    PASTA_ENTRADA_PADRAO,
+    PASTA_SAIDA_PADRAO,
+    EventoProgresso,
+    carregar_modelo,
+    detectar_dispositivo,
+    encontrar_arquivos,
+    escrever_saidas,
+    formatar_hms,
+    transcrever_arquivo,
+)
 
 if os.name == "nt":
     try:
@@ -50,276 +50,30 @@ from rich import box
 
 console = Console()
 
-EXTENSOES_SUPORTADAS = {
-    ".mp4", ".mkv", ".mov", ".avi", ".webm", ".flv", ".wmv", ".m4v", ".ts",
-    ".mp3", ".wav", ".m4a", ".flac", ".ogg", ".aac", ".opus",
-}
 
-MODELOS_DISPONIVEIS = ["tiny", "base", "small", "medium", "large-v2", "large-v3"]
-FORMATOS_DISPONIVEIS = ["txt", "srt", "vtt", "json"]
+class ProgressoRich:
+    """Adaptador que liga os EventoProgresso do núcleo a uma barra do rich por arquivo."""
 
-PASTA_ENTRADA_PADRAO = Path("entrada")
-PASTA_SAIDA_PADRAO = "saida"
-PASTA_DOWNLOADS = PASTA_ENTRADA_PADRAO / "_downloads"
+    def __init__(self, progress: Progress) -> None:
+        self._progress = progress
+        self._tarefas: dict[Path, int] = {}
 
-FINALIZADORES_DE_FRASE = (".", "!", "?", "…")
-
-
-@dataclass
-class Segmento:
-    inicio: float
-    fim: float
-    texto: str
-
-
-@dataclass
-class Palavra:
-    inicio: float
-    fim: float
-    texto: str
-
-
-@dataclass
-class ResultadoTranscricao:
-    arquivo: Path
-    idioma: str
-    probabilidade_idioma: float
-    duracao: float
-    segmentos: list[Segmento] = field(default_factory=list)
-    tempo_processamento: float = 0.0
-
-    @property
-    def texto_completo(self) -> str:
-        return " ".join(s.texto.strip() for s in self.segmentos).strip()
-
-
-def formatar_hms(segundos: float) -> str:
-    segundos = max(0.0, segundos)
-    horas, resto = divmod(int(segundos), 3600)
-    minutos, segs = divmod(resto, 60)
-    return f"{horas:02d}:{minutos:02d}:{segs:02d}"
-
-
-def formatar_timestamp_legenda(segundos: float, separador_ms: str = ",") -> str:
-    segundos = max(0.0, segundos)
-    horas, resto = divmod(segundos, 3600)
-    minutos, resto = divmod(resto, 60)
-    segs, ms = divmod(resto, 1)
-    return f"{int(horas):02d}:{int(minutos):02d}:{int(segs):02d}{separador_ms}{int(ms * 1000):03d}"
-
-
-def montar_blocos(palavras: list[Palavra], max_caracteres: int, max_duracao: float) -> list[Segmento]:
-    """Reagrupa palavras (com timestamp individual) em blocos menores para
-    legenda/leitura, respeitando um limite de caracteres e de duração por bloco."""
-    blocos: list[Segmento] = []
-    atual: list[Palavra] = []
-
-    def texto_de(lista: list[Palavra]) -> str:
-        return "".join(p.texto for p in lista).strip()
-
-    def fechar_bloco() -> None:
-        if not atual:
-            return
-        blocos.append(Segmento(inicio=atual[0].inicio, fim=atual[-1].fim, texto=texto_de(atual)))
-        atual.clear()
-
-    for palavra in palavras:
-        candidato = atual + [palavra]
-        texto_candidato = texto_de(candidato)
-        duracao_candidato = palavra.fim - candidato[0].inicio
-
-        if atual and (len(texto_candidato) > max_caracteres or duracao_candidato > max_duracao):
-            fechar_bloco()
-
-        atual.append(palavra)
-
-        texto_atual = texto_de(atual)
-        if texto_atual.endswith(FINALIZADORES_DE_FRASE) and len(texto_atual) > max_caracteres * 0.4:
-            fechar_bloco()
-
-    fechar_bloco()
-    return blocos
-
-
-def extrair_palavras(segmentos_whisper) -> list[Palavra]:
-    palavras: list[Palavra] = []
-    for seg in segmentos_whisper:
-        if seg.words:
-            palavras.extend(Palavra(inicio=w.start, fim=w.end, texto=w.word) for w in seg.words)
-        else:
-            palavras.append(Palavra(inicio=seg.start, fim=seg.end, texto=f" {seg.text.strip()}"))
-    return palavras
-
-
-def detectar_dispositivo(preferencia: str) -> tuple[str, str]:
-    """Decide device/compute_type para o ctranslate2, respeitando preferência do usuário."""
-    if preferencia == "cpu":
-        return "cpu", "int8"
-
-    dispositivo = "cpu"
-    if preferencia in ("auto", "cuda"):
-        try:
-            import ctranslate2
-
-            if ctranslate2.get_cuda_device_count() > 0:
-                dispositivo = "cuda"
-        except Exception:
-            dispositivo = "cpu"
-
-    if preferencia == "cuda" and dispositivo != "cuda":
-        console.print(
-            "[yellow]Aviso:[/yellow] GPU CUDA não encontrada, usando CPU.",
-        )
-
-    compute_type = "float16" if dispositivo == "cuda" else "int8"
-    return dispositivo, compute_type
-
-
-def eh_url(texto: str) -> bool:
-    return texto.startswith("http://") or texto.startswith("https://")
-
-
-def baixar_de_url(url: str, pasta_destino: Path) -> Path:
-    import yt_dlp
-
-    pasta_destino.mkdir(parents=True, exist_ok=True)
-    opcoes = {
-        "format": "bestaudio/best",
-        "outtmpl": str(pasta_destino / "%(title).150B [%(id)s].%(ext)s"),
-        "quiet": True,
-        "no_warnings": True,
-        "noprogress": True,
-        "restrictfilenames": False,
-    }
-    with yt_dlp.YoutubeDL(opcoes) as ydl:
-        info = ydl.extract_info(url, download=True)
-        return Path(ydl.prepare_filename(info))
-
-
-def encontrar_arquivos(entradas: list[str]) -> list[Path]:
-    arquivos: list[Path] = []
-    for entrada in entradas:
-        if eh_url(entrada):
-            with console.status(f"[bold cyan]Baixando vídeo de: {entrada}", spinner="dots"):
-                try:
-                    caminho = baixar_de_url(entrada, PASTA_DOWNLOADS)
-                except Exception as erro:
-                    console.print(f"[red]Erro ao baixar '{entrada}':[/red] {erro}")
-                    continue
-            console.print(f"[green]Baixado:[/green] {caminho.name}")
-            arquivos.append(caminho)
-            continue
-
-        caminho = Path(entrada)
-        if caminho.is_dir():
-            for item in sorted(caminho.rglob("*")):
-                if item.is_file() and item.suffix.lower() in EXTENSOES_SUPORTADAS:
-                    arquivos.append(item)
-        elif caminho.is_file():
-            arquivos.append(caminho)
-        else:
-            console.print(f"[red]Aviso:[/red] '{entrada}' não encontrado, ignorando.")
-    return arquivos
-
-
-def escrever_saidas(resultado: ResultadoTranscricao, pasta_saida: Path, formatos: list[str]) -> list[Path]:
-    pasta_saida.mkdir(parents=True, exist_ok=True)
-    base = pasta_saida / resultado.arquivo.stem
-    gerados: list[Path] = []
-
-    if "txt" in formatos:
-        caminho = base.with_suffix(".txt")
-        linhas = [seg.texto.strip() for seg in resultado.segmentos]
-        caminho.write_text("\n".join(linhas) + "\n", encoding="utf-8")
-        gerados.append(caminho)
-
-    if "srt" in formatos:
-        caminho = base.with_suffix(".srt")
-        linhas = []
-        for i, seg in enumerate(resultado.segmentos, start=1):
-            linhas.append(str(i))
-            linhas.append(
-                f"{formatar_timestamp_legenda(seg.inicio)} --> {formatar_timestamp_legenda(seg.fim)}"
+    def __call__(self, evento: EventoProgresso) -> None:
+        if evento.arquivo not in self._tarefas:
+            total = round(evento.duracao_total, 1) if evento.duracao_total else None
+            self._tarefas[evento.arquivo] = self._progress.add_task(
+                f"[cyan]{evento.arquivo.name}", total=total
             )
-            linhas.append(seg.texto.strip())
-            linhas.append("")
-        caminho.write_text("\n".join(linhas), encoding="utf-8")
-        gerados.append(caminho)
-
-    if "vtt" in formatos:
-        caminho = base.with_suffix(".vtt")
-        linhas = ["WEBVTT", ""]
-        for seg in resultado.segmentos:
-            linhas.append(
-                f"{formatar_timestamp_legenda(seg.inicio, '.')} --> {formatar_timestamp_legenda(seg.fim, '.')}"
-            )
-            linhas.append(seg.texto.strip())
-            linhas.append("")
-        caminho.write_text("\n".join(linhas), encoding="utf-8")
-        gerados.append(caminho)
-
-    if "json" in formatos:
-        caminho = base.with_suffix(".json")
-        dados = {
-            "arquivo": str(resultado.arquivo),
-            "idioma": resultado.idioma,
-            "probabilidade_idioma": resultado.probabilidade_idioma,
-            "duracao_segundos": resultado.duracao,
-            "segmentos": [
-                {"inicio": s.inicio, "fim": s.fim, "texto": s.texto.strip()}
-                for s in resultado.segmentos
-            ],
-        }
-        caminho.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
-        gerados.append(caminho)
-
-    return gerados
+        self._progress.update(self._tarefas[evento.arquivo], completed=evento.segundos_concluidos)
 
 
-def transcrever_arquivo(
-    modelo,
-    arquivo: Path,
-    idioma: str | None,
-    tarefa: str,
-    beam_size: int,
-    vad_filter: bool,
-    max_caracteres: int,
-    max_duracao: float,
-    progress: Progress,
-) -> ResultadoTranscricao:
-    segmentos_gerados, info = modelo.transcribe(
-        str(arquivo),
-        language=idioma,
-        task=tarefa,
-        beam_size=beam_size,
-        vad_filter=vad_filter,
-        word_timestamps=True,
-    )
-
-    duracao = info.duration
-    tarefa_progresso = progress.add_task(
-        f"[cyan]{arquivo.name}", total=round(duracao, 1) if duracao else None
-    )
-
-    resultado = ResultadoTranscricao(
-        arquivo=arquivo,
-        idioma=info.language,
-        probabilidade_idioma=info.language_probability,
-        duracao=duracao,
-    )
-
-    segmentos_brutos = []
-    inicio_processamento = time.perf_counter()
-    for seg in segmentos_gerados:
-        segmentos_brutos.append(seg)
-        progress.update(tarefa_progresso, completed=min(seg.end, duracao) if duracao else seg.end)
-    progress.update(tarefa_progresso, completed=duracao)
-    resultado.tempo_processamento = time.perf_counter() - inicio_processamento
-
-    palavras = extrair_palavras(segmentos_brutos)
-    resultado.segmentos = montar_blocos(palavras, max_caracteres=max_caracteres, max_duracao=max_duracao)
-
-    return resultado
+def _notificar(nivel: str, mensagem: str) -> None:
+    cores = {"info": "green", "aviso": "yellow", "erro": "red"}
+    rotulos = {"info": "", "aviso": "Aviso:", "erro": "Erro:"}
+    cor = cores.get(nivel, "white")
+    rotulo = rotulos.get(nivel, "")
+    prefixo = f"[{cor}]{rotulo}[/{cor}] " if rotulo else ""
+    console.print(f"{prefixo}{mensagem}")
 
 
 def montar_argumentos() -> argparse.Namespace:
@@ -393,7 +147,14 @@ def main() -> None:
     else:
         entradas = args.entradas
 
-    arquivos = encontrar_arquivos(entradas)
+    def baixar_status(mensagem: str):
+        return console.status(f"[bold cyan]{mensagem}", spinner="dots")
+
+    arquivos = encontrar_arquivos(
+        entradas,
+        notificar=_notificar,
+        contexto_download=baixar_status,
+    )
     if not arquivos:
         if usando_pasta_padrao:
             console.print(
@@ -405,7 +166,7 @@ def main() -> None:
             console.print("[bold red]Nenhum arquivo de vídeo/áudio válido encontrado.[/bold red]")
         sys.exit(1)
 
-    dispositivo, compute_type = detectar_dispositivo(args.dispositivo)
+    dispositivo, compute_type = detectar_dispositivo(args.dispositivo, notificar=_notificar)
     pasta_saida = Path(args.saida)
 
     tabela_config = Table(box=box.SIMPLE, show_header=False)
@@ -420,9 +181,7 @@ def main() -> None:
     console.print(tabela_config)
 
     with console.status(f"[bold cyan]Carregando modelo '{args.modelo}'...", spinner="dots"):
-        from faster_whisper import WhisperModel
-
-        modelo = WhisperModel(args.modelo, device=dispositivo, compute_type=compute_type)
+        modelo = carregar_modelo(args.modelo, dispositivo, compute_type)
 
     console.print("[green]Modelo carregado.[/green]\n")
 
@@ -444,6 +203,7 @@ def main() -> None:
     )
 
     with progress:
+        ao_progredir = ProgressoRich(progress)
         for arquivo in arquivos:
             resultado = transcrever_arquivo(
                 modelo,
@@ -454,7 +214,7 @@ def main() -> None:
                 vad_filter=not args.sem_vad,
                 max_caracteres=args.max_caracteres,
                 max_duracao=args.max_duracao,
-                progress=progress,
+                ao_progredir=ao_progredir,
             )
             gerados = escrever_saidas(resultado, pasta_saida, args.formatos)
             resumo.add_row(

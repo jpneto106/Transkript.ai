@@ -118,12 +118,19 @@ var
 begin
   if CurStep = usUninstall then
   begin
-    Resposta := MsgBox(
-      'Remover também os modelos de transcrição baixados e o histórico?' + #13#10 + #13#10 +
-      'Sim — apaga tudo, sem deixar nenhum arquivo no computador.' + #13#10 +
-      'Não — mantém os modelos e o histórico, caso você pretenda reinstalar' + #13#10 +
-      '        (assim não precisará baixar os modelos de novo).',
-      mbConfirmation, MB_YESNO);
+    { Numa desinstalação automatizada (/SILENT) não há ninguém para clicar.
+      Perguntar ali deixaria o desinstalador parado para sempre, esperando uma
+      resposta que nunca vem. Nesse caso seguimos o objetivo declarado do
+      projeto: remover tudo. }
+    if UninstallSilent() then
+      Resposta := IDYES
+    else
+      Resposta := MsgBox(
+        'Remover também os modelos de transcrição baixados e o histórico?' + #13#10 + #13#10 +
+        'Sim — apaga tudo, sem deixar nenhum arquivo no computador.' + #13#10 +
+        'Não — mantém os modelos e o histórico, caso você pretenda reinstalar' + #13#10 +
+        '        (assim não precisará baixar os modelos de novo).',
+        mbConfirmation, MB_YESNO);
 
     if Resposta = IDYES then
     begin

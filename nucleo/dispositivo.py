@@ -6,17 +6,36 @@ import os
 import sys
 from pathlib import Path
 
+from .caminhos import RAIZ_APP
+
+
+def _pastas_dlls_nvidia() -> list[str]:
+    """Onde procurar as DLLs de cuBLAS/cuDNN, nas duas formas de rodar o programa.
+
+    Empacotado, elas ficam em <app>/ferramentas/cuda — mesmo padrão do ffmpeg
+    embutido, e dentro da pasta do programa, para o desinstalador levar tudo.
+    A partir do código-fonte, vêm dos pacotes pip nvidia-*-cu12 no venv.
+    """
+    embutidas = RAIZ_APP / "ferramentas" / "cuda"
+    if embutidas.is_dir():
+        pastas = [str(p) for p in embutidas.glob("*/bin") if p.is_dir()]
+        if pastas:
+            return pastas
+
+    do_venv = Path(sys.prefix) / "Lib" / "site-packages" / "nvidia"
+    if do_venv.is_dir():
+        return [str(p) for p in do_venv.glob("*/bin") if p.is_dir()]
+
+    return []
+
 
 def _registrar_dlls_nvidia() -> None:
-    """No Windows, as DLLs de cuBLAS/cuDNN instaladas via pip (nvidia-*-cu12) ficam
-    dentro de site-packages e o ctranslate2 só as encontra se estiverem no PATH
-    (os.add_dll_directory não é suficiente para os LoadLibrary internos dele)."""
+    """No Windows, o ctranslate2 só encontra as DLLs de cuBLAS/cuDNN se elas
+    estiverem no PATH (os.add_dll_directory não basta para os LoadLibrary
+    internos dele)."""
     if os.name != "nt":
         return
-    base = Path(sys.prefix) / "Lib" / "site-packages" / "nvidia"
-    if not base.is_dir():
-        return
-    pastas = [str(p) for p in base.glob("*/bin")]
+    pastas = _pastas_dlls_nvidia()
     if pastas:
         os.environ["PATH"] = os.pathsep.join(pastas) + os.pathsep + os.environ.get("PATH", "")
 

@@ -14,21 +14,30 @@ internal static class Program
     }
 
     /// <summary>
-    /// Descobre a pasta do programa (onde ficam api/, venv/, dados/, app.ico).
+    /// Descobre a pasta do programa (onde ficam servidor/, modelos/, dados/, app.ico).
     ///
-    /// Instalado, o executável fica na própria raiz. Em desenvolvimento ele fica
-    /// em casca\bin\Debug\..., então subimos os níveis até achar "api\main.py".
-    /// O argumento --raiz permite apontar manualmente durante os testes.
+    /// A ordem importa. Instalado, o executável já está na raiz e o servidor
+    /// empacotado fica ao lado dele — esse caso precisa ser reconhecido ANTES da
+    /// busca por "api\main.py", senão um código-fonte existente em alguma pasta
+    /// acima seria escolhido por engano.
     /// </summary>
     private static string DescobrirRaiz(string[] args)
     {
+        // 1. Apontado à mão (testes).
         for (int i = 0; i < args.Length - 1; i++)
         {
             if (args[i] == "--raiz")
                 return Path.GetFullPath(args[i + 1]);
         }
 
-        var pasta = AppContext.BaseDirectory;
+        // 2. Instalado: o servidor empacotado está ao lado do executável.
+        var aoLado = AppContext.BaseDirectory;
+        if (File.Exists(Path.Combine(aoLado, "servidor", "servidor.exe")))
+            return aoLado;
+
+        // 3. Desenvolvimento: o executável está em casca\bin\Debug\...,
+        //    então subimos até encontrar o código-fonte.
+        var pasta = aoLado;
         for (int nivel = 0; nivel < 8 && !string.IsNullOrEmpty(pasta); nivel++)
         {
             if (File.Exists(Path.Combine(pasta, "api", "main.py")))
@@ -36,6 +45,6 @@ internal static class Program
             pasta = Path.GetDirectoryName(pasta.TrimEnd(Path.DirectorySeparatorChar));
         }
 
-        return AppContext.BaseDirectory;
+        return aoLado;
     }
 }

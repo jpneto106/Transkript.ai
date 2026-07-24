@@ -8,11 +8,11 @@ sem que cada consumidor precise lembrar de chamá-lo.
 from __future__ import annotations
 
 import os
-from pathlib import Path
 
 # --- App portátil: tudo dentro da pasta do programa ---
-# Raiz do app = pasta que contém este pacote nucleo/.
-_APP_ROOT = Path(__file__).resolve().parent.parent
+# A raiz é calculada em nucleo/caminhos.py, que também trata o caso do programa
+# empacotado (PyInstaller), onde __file__ apontaria para dentro do pacote.
+from .caminhos import RAIZ_APP as _APP_ROOT
 
 # Modelos do Whisper ficam em <app>/modelos (em vez do cache compartilhado do sistema),
 # tornando o programa autossuficiente. setdefault respeita um HF_HOME já definido.

@@ -4,8 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-# Raiz do projeto (a pasta que contém este pacote api/).
-RAIZ = Path(__file__).resolve().parent.parent
+from nucleo.caminhos import RAIZ_APP
+
+# Raiz do aplicativo. Vem de nucleo/caminhos.py para que o programa empacotado
+# guarde modelos, banco e saídas na pasta visível do app — e não escondidos
+# dentro do executável, onde o desinstalador não os encontraria.
+RAIZ = RAIZ_APP
 
 
 def _pasta_dados() -> Path:

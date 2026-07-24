@@ -109,6 +109,11 @@ internal sealed class Servidor : IDisposable
         info.RedirectStandardOutput = true;
         info.RedirectStandardError = true;
 
+        // Diz ao Python onde fica a pasta do aplicativo. Sem isto, o servidor
+        // empacotado guardaria modelos e banco dentro do próprio executável —
+        // lugares que o desinstalador não varre.
+        info.Environment["TRANSKRIPT_RAIZ"] = _raiz;
+
         _processo = new Process { StartInfo = info, EnableRaisingEvents = true };
 
         // A saída do servidor vai para dados\servidor.log (ajuda a diagnosticar).

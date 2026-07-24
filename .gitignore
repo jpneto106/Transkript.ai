@@ -16,6 +16,8 @@ CLAUDE.md
 PLANO_V2_DISTRIBUICAO.md
 casca/bin/
 casca/obj/
+build/
+dist/
 frontend/*.tsbuildinfo
 frontend/vite.config.js
 frontend/vite.config.d.ts

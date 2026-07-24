@@ -1,0 +1,10 @@
+# Normaliza quebras de linha: o Git guarda em LF e ajusta no checkout.
+* text=auto eol=lf
+
+# Scripts do Windows usam CRLF.
+*.bat text eol=crlf
+
+# Arquivos binários (não mexer).
+*.png binary
+*.jpg binary
+*.ico binary

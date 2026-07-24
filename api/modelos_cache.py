@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import threading
+import time
+
 from nucleo.constantes import MODELOS_DISPONIVEIS
 
 # Metadados amigáveis por modelo, para a interface explicar o trade-off ao usuário.
@@ -20,21 +23,43 @@ def _repo_id(nome: str) -> str:
     return f"Systran/faster-whisper-{nome}"
 
 
-def _mapa_tamanho_em_disco() -> dict[str, int]:
-    """Retorna {nome_modelo: bytes_em_disco} para os modelos já baixados."""
-    try:
-        from huggingface_hub import scan_cache_dir
+# Cache da varredura do disco (scan_cache_dir é lento). Curto TTL; invalidado ao
+# baixar/remover um modelo.
+_cache_tamanhos: dict[str, int] | None = None
+_cache_ts: float = 0.0
+_cache_lock = threading.Lock()
+_CACHE_TTL = 15.0
 
-        info = scan_cache_dir()
-    except Exception:
-        return {}
 
-    tamanhos: dict[str, int] = {}
-    for repo in info.repos:
-        for nome in MODELOS_DISPONIVEIS:
-            if repo.repo_id == _repo_id(nome):
-                tamanhos[nome] = repo.size_on_disk
-    return tamanhos
+def _mapa_tamanho_em_disco(forcar: bool = False) -> dict[str, int]:
+    """Retorna {nome_modelo: bytes_em_disco} para os modelos já baixados (com cache)."""
+    global _cache_tamanhos, _cache_ts
+    with _cache_lock:
+        agora = time.monotonic()
+        if not forcar and _cache_tamanhos is not None and (agora - _cache_ts) < _CACHE_TTL:
+            return _cache_tamanhos
+
+        try:
+            from huggingface_hub import scan_cache_dir
+
+            info = scan_cache_dir()
+        except Exception:
+            return _cache_tamanhos or {}
+
+        tamanhos: dict[str, int] = {}
+        for repo in info.repos:
+            for nome in MODELOS_DISPONIVEIS:
+                if repo.repo_id == _repo_id(nome):
+                    tamanhos[nome] = repo.size_on_disk
+        _cache_tamanhos = tamanhos
+        _cache_ts = agora
+        return tamanhos
+
+
+def invalidar_cache() -> None:
+    global _cache_tamanhos
+    with _cache_lock:
+        _cache_tamanhos = None
 
 
 def listar_modelos(modelo_padrao: str | None) -> list[dict]:
@@ -63,6 +88,7 @@ def baixar_modelo(nome: str) -> None:
     from huggingface_hub import snapshot_download
 
     snapshot_download(repo_id=_repo_id(nome))
+    invalidar_cache()
 
 
 def remover_modelo(nome: str) -> bool:
@@ -77,4 +103,5 @@ def remover_modelo(nome: str) -> bool:
     if not hashes:
         return False
     info.delete_revisions(*hashes).execute()
+    invalidar_cache()
     return True

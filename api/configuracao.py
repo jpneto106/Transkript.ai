@@ -2,13 +2,27 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 # Raiz do projeto (a pasta que contém este pacote api/).
 RAIZ = Path(__file__).resolve().parent.parent
 
-# Pasta de dados do app (banco de histórico, preferências). Fora do git.
-PASTA_DADOS = RAIZ / "dados_app"
+
+def _pasta_dados() -> Path:
+    """Pasta de dados do app (banco, preferências, logs).
+
+    IMPORTANTE: fica FORA do projeto quando este está dentro do OneDrive. O OneDrive
+    sincroniza/bloqueia arquivos em tempo real, o que deixa o SQLite lento e pode
+    travar o app. Por isso usamos %LOCALAPPDATA% no Windows (nunca sincronizado)."""
+    base = os.environ.get("LOCALAPPDATA")
+    if os.name == "nt" and base:
+        return Path(base) / "Transcritor"
+    return Path.home() / ".transcritor"
+
+
+# Pasta de dados do app (banco de histórico, preferências, logs).
+PASTA_DADOS = _pasta_dados()
 CAMINHO_BANCO = PASTA_DADOS / "historico.db"
 
 # Pasta padrão de saída das transcrições feitas pela interface.

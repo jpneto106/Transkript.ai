@@ -1,7 +1,7 @@
 // Cliente da API. Em produção (pywebview) o frontend é servido pela própria API,
 // então usamos caminhos relativos. Em dev (Vite na 5173), apontamos para a 8000.
 
-import type { ModeloInfo, Opcoes, ParametrosTranscricao, Transcricao } from "./tipos";
+import type { Dicionario, ModeloInfo, Opcoes, ParametrosTranscricao, Transcricao } from "./tipos";
 
 const EM_DEV = import.meta.env.DEV;
 const BASE = EM_DEV ? "http://127.0.0.1:8000" : "";
@@ -104,6 +104,38 @@ export const api = {
 
   wsProgresso(id: string): WebSocket {
     return new WebSocket(`${baseWS()}/api/transcricoes/${id}/ws`);
+  },
+
+  // ---------------------------------------------------------- dicionários
+  async dicionarios(): Promise<Dicionario[]> {
+    return json(await fetch(`${BASE}/api/dicionarios`));
+  },
+
+  async criarDicionario(d: { nome: string; descricao: string | null; termos: string[] }): Promise<Dicionario> {
+    return json(
+      await fetch(`${BASE}/api/dicionarios`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(d),
+      }),
+    );
+  },
+
+  async atualizarDicionario(
+    id: string,
+    d: { nome: string; descricao: string | null; termos: string[] },
+  ): Promise<Dicionario> {
+    return json(
+      await fetch(`${BASE}/api/dicionarios/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(d),
+      }),
+    );
+  },
+
+  async removerDicionario(id: string): Promise<void> {
+    await json(await fetch(`${BASE}/api/dicionarios/${id}`, { method: "DELETE" }));
   },
 };
 

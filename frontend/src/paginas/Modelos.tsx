@@ -2,6 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import type { ModeloInfo } from "../tipos";
 
+const Canto = () => (
+  <>
+    <i className="corner tl" /><i className="corner tr" /><i className="corner bl" /><i className="corner br" />
+  </>
+);
+
 export default function Modelos() {
   const [modelos, setModelos] = useState<ModeloInfo[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -10,9 +16,7 @@ export default function Modelos() {
 
   useEffect(() => {
     carregar();
-    return () => {
-      if (pollRef.current) window.clearInterval(pollRef.current);
-    };
+    return () => { if (pollRef.current) window.clearInterval(pollRef.current); };
   }, []);
 
   async function carregar() {
@@ -30,12 +34,8 @@ export default function Modelos() {
     pollRef.current = window.setInterval(async () => {
       const ms = await api.modelos();
       setModelos(ms);
-      // Para o polling quando não há mais nada baixando.
       if (!ms.some((m) => m.download_status === "baixando")) {
-        if (pollRef.current) {
-          window.clearInterval(pollRef.current);
-          pollRef.current = null;
-        }
+        if (pollRef.current) { window.clearInterval(pollRef.current); pollRef.current = null; }
       }
     }, 2000);
   }
@@ -44,9 +44,7 @@ export default function Modelos() {
     setErro("");
     try {
       await api.baixarModelo(nome);
-      setModelos((ms) =>
-        ms.map((m) => (m.nome === nome ? { ...m, download_status: "baixando" } : m)),
-      );
+      setModelos((ms) => ms.map((m) => (m.nome === nome ? { ...m, download_status: "baixando" } : m)));
       iniciarPolling();
     } catch {
       setErro("Não consegui iniciar o download.");
@@ -74,62 +72,59 @@ export default function Modelos() {
 
   return (
     <>
-      <h1 className="pagina-titulo">Modelos de transcrição</h1>
+      <h3 style={{ marginBottom: "var(--space-2)" }}>Modelos de transcrição</h3>
       <p className="pagina-desc">
-        Os modelos são o "cérebro" que reconhece a fala. Modelos maiores entendem melhor, mas ocupam
-        mais espaço e demoram mais. Você só precisa baixar uma vez.
+        Os modelos são o "cérebro" que reconhece a fala. Modelos maiores são mais precisos, porém
+        mais lentos e ocupam mais espaço. Todos rodam localmente e você só baixa uma vez.
       </p>
 
-      {erro && (
-        <div className="alerta alerta-erro">
-          <span className="icone">⚠️</span>
-          <div>{erro}</div>
-        </div>
-      )}
+      <div className="card-kicker" style={{ marginBottom: "var(--space-3)" }}>Motor: Whisper (faster-whisper)</div>
 
+      {erro && <div className="alerta alerta-erro"><span className="icone">⚠️</span><div>{erro}</div></div>}
       {carregando && <div className="vazio">Carregando…</div>}
 
-      {modelos.map((m) => (
-        <div key={m.nome} className={`modelo-card ${m.e_padrao ? "padrao" : ""}`}>
-          <span style={{ fontSize: 24 }}>{m.baixado ? "📦" : "☁️"}</span>
-          <div className="modelo-info">
-            <div className="modelo-nome">
+      <div className="grade-3">
+        {modelos.map((m) => (
+          <div key={m.nome} className="card blueprint elev-sm" style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+            <Canto />
+            <div className="card-kicker">
+              {m.baixado ? `Baixado · ${formatarMB(m.tamanho_disco_mb)}` : `~${m.tamanho_aprox_mb} MB`}
+            </div>
+            <div className="card-title">
               {m.rotulo}
-              {m.recomendado && <span className="badge badge-primaria">Recomendado</span>}
-              {m.e_padrao && <span className="badge badge-sucesso">Padrão</span>}
+              {m.recomendado && <span className="tag tag-accent" style={{ marginLeft: 8 }}>Recomendado</span>}
+              {m.e_padrao && <span className="tag tag-neutral" style={{ marginLeft: 6 }}>Padrão</span>}
             </div>
-            <div className="modelo-resumo">
-              {m.resumo}
-              {" · "}
-              {m.baixado
-                ? `Baixado (${formatarMB(m.tamanho_disco_mb)})`
-                : `Download de ~${m.tamanho_aprox_mb} MB`}
-            </div>
-          </div>
-          <div className="modelo-acoes">
+            <p className="card-body" style={{ flex: 1 }}>{m.resumo}</p>
+
             {m.download_status === "baixando" ? (
-              <span className="badge badge-neutro">
-                <span className="girando">⏳</span> Baixando…
+              <span className="tag tag-neutral" style={{ alignSelf: "flex-start" }}>
+                <span className="girando" style={{ marginRight: 6 }}>⏳</span> Baixando…
               </span>
             ) : m.baixado ? (
-              <>
-                {!m.e_padrao && (
-                  <button className="btn-fantasma" onClick={() => tornarPadrao(m.nome)}>
-                    Tornar padrão
-                  </button>
-                )}
-                <button className="btn-fantasma btn-perigo" onClick={() => remover(m.nome)}>
-                  Remover
-                </button>
-              </>
+              <div className="acoes">
+                {!m.e_padrao && <button className="btn btn-ghost" onClick={() => tornarPadrao(m.nome)}>Tornar padrão</button>}
+                <button className="btn btn-ghost btn-perigo" onClick={() => remover(m.nome)}>Remover</button>
+              </div>
             ) : (
-              <button className="btn btn-primario" onClick={() => baixar(m.nome)}>
-                ⬇️ Baixar
+              <button className="btn btn-secondary btn-block blueprint" onClick={() => baixar(m.nome)}>
+                <Canto />Baixar
               </button>
             )}
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
+
+      <div className="card blueprint elev-sm" style={{ marginTop: "var(--space-6)", opacity: 0.85 }}>
+        <Canto />
+        <div className="card-kicker">Em breve</div>
+        <div className="card-title">Outros motores de transcrição</div>
+        <p className="card-body">
+          Suporte a modelos de outros fornecedores (como NVIDIA NeMo/Parakeet e outros do Hugging
+          Face) está planejado. Eles usam um motor diferente do Whisper e serão adicionados aqui
+          como opções extras, sem trocar o que já funciona.
+        </p>
+      </div>
     </>
   );
 }

@@ -58,6 +58,14 @@ def criar_tabelas() -> None:
                 chave TEXT PRIMARY KEY,
                 valor TEXT
             );
+            CREATE TABLE IF NOT EXISTS dicionarios (
+                id          TEXT PRIMARY KEY,
+                nome        TEXT NOT NULL,
+                descricao   TEXT,
+                termos      TEXT NOT NULL,   -- JSON: lista de strings
+                criado_em   TEXT NOT NULL,
+                atualizado_em TEXT NOT NULL
+            );
             """
         )
         c.commit()
@@ -171,3 +179,59 @@ def obter_todas_configs() -> dict[str, str]:
         c = _conn()
         rows = c.execute("SELECT chave, valor FROM configuracoes").fetchall()
     return {r["chave"]: r["valor"] for r in rows}
+
+
+# ---------------------------------------------------------------- dicionários
+
+
+def _linha_dicionario(row: sqlite3.Row) -> dict[str, Any]:
+    d = dict(row)
+    try:
+        d["termos"] = json.loads(d["termos"]) if d.get("termos") else []
+    except (json.JSONDecodeError, TypeError):
+        d["termos"] = []
+    return d
+
+
+def listar_dicionarios() -> list[dict[str, Any]]:
+    with _lock:
+        c = _conn()
+        rows = c.execute("SELECT * FROM dicionarios ORDER BY nome COLLATE NOCASE").fetchall()
+    return [_linha_dicionario(r) for r in rows]
+
+
+def obter_dicionario(id_: str) -> dict[str, Any] | None:
+    with _lock:
+        c = _conn()
+        row = c.execute("SELECT * FROM dicionarios WHERE id = ?", (id_,)).fetchone()
+    return _linha_dicionario(row) if row else None
+
+
+def inserir_dicionario(dados: dict[str, Any]) -> None:
+    dados = dict(dados)
+    dados["termos"] = json.dumps(dados.get("termos", []), ensure_ascii=False)
+    colunas = ", ".join(dados.keys())
+    marcadores = ", ".join(["?"] * len(dados))
+    with _lock:
+        c = _conn()
+        c.execute(f"INSERT INTO dicionarios ({colunas}) VALUES ({marcadores})", tuple(dados.values()))
+        c.commit()
+
+
+def atualizar_dicionario(id_: str, campos: dict[str, Any]) -> None:
+    campos = dict(campos)
+    if "termos" in campos and not isinstance(campos["termos"], str):
+        campos["termos"] = json.dumps(campos["termos"], ensure_ascii=False)
+    atribuicoes = ", ".join(f"{k} = ?" for k in campos)
+    valores = list(campos.values()) + [id_]
+    with _lock:
+        c = _conn()
+        c.execute(f"UPDATE dicionarios SET {atribuicoes} WHERE id = ?", valores)
+        c.commit()
+
+
+def remover_dicionario(id_: str) -> None:
+    with _lock:
+        c = _conn()
+        c.execute("DELETE FROM dicionarios WHERE id = ?", (id_,))
+        c.commit()

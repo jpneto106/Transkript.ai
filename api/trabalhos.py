@@ -176,6 +176,14 @@ def _processar_job(id_: str, parametros: dict[str, Any]) -> None:
         _atualizar_estado(id_, status=TRANSCREVENDO, mensagem=_ROTULOS_STATUS[TRANSCREVENDO])
         bd.atualizar_transcricao(id_, {"status": TRANSCREVENDO, "atualizado_em": _agora()})
 
+        # Dicionário de termos -> initial_prompt (enviesa o modelo a reconhecer os termos).
+        initial_prompt = None
+        dic_id = parametros.get("dicionario_id")
+        if dic_id:
+            dic = bd.obter_dicionario(dic_id)
+            if dic and dic.get("termos"):
+                initial_prompt = ", ".join(dic["termos"])
+
         def ao_progredir(evento: EventoProgresso) -> None:
             _atualizar_estado(
                 id_,
@@ -192,6 +200,7 @@ def _processar_job(id_: str, parametros: dict[str, Any]) -> None:
             vad_filter=parametros.get("vad_filter", True),
             max_caracteres=parametros["max_caracteres"],
             max_duracao=parametros["max_duracao"],
+            initial_prompt=initial_prompt,
             ao_progredir=ao_progredir,
         )
 

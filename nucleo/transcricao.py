@@ -45,6 +45,7 @@ def transcrever_arquivo(
     vad_filter: bool,
     max_caracteres: int,
     max_duracao: float,
+    initial_prompt: str | None = None,
     ao_progredir: CallbackProgresso | None = None,
 ) -> ResultadoTranscricao:
     segmentos_gerados, info = modelo.transcribe(
@@ -54,6 +55,7 @@ def transcrever_arquivo(
         beam_size=beam_size,
         vad_filter=vad_filter,
         word_timestamps=True,
+        initial_prompt=initial_prompt,
     )
 
     duracao = info.duration

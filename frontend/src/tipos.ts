@@ -28,6 +28,17 @@ export interface ParametrosTranscricao {
   max_caracteres: number;
   max_duracao: number;
   vad_filter: boolean;
+  dicionario_id: string | null;
+  diarizar: boolean;
+}
+
+export interface Dicionario {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  termos: string[];
+  criado_em: string;
+  atualizado_em: string;
 }
 
 export interface Transcricao {

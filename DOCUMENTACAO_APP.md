@@ -17,7 +17,7 @@ Se a janela não abrir, veja a seção "Problemas comuns" no fim deste documento
 
 ---
 
-## 2. Como usar (as três abas)
+## 2. Como usar (as abas)
 
 ### ✏️ Nova transcrição
 1. **Escolha o arquivo**: arraste um vídeo/áudio para a área pontilhada, ou clique nela para
@@ -28,16 +28,30 @@ Se a janela não abrir, veja a seção "Problemas comuns" no fim deste documento
    - **Formatos de saída**: TXT (texto), SRT/VTT (legenda), JSON (dados). Padrão: TXT + SRT.
    - **Opções avançadas** (recolhidas): onde processar (GPU/CPU) e o tamanho dos blocos de legenda.
 3. **Clique em "Transcrever"**. A barra de progresso mostra o andamento em tempo real.
-4. Ao terminar, o texto aparece na tela. Você pode **copiar**, **baixar** cada formato ou
-   **abrir a pasta** onde os arquivos foram salvos.
+4. Ao terminar, o texto aparece na tela. Há um seletor **"Texto" / "Com marcações de tempo"**:
+   "Texto" mostra o conteúdo corrido (TXT); "Com marcações de tempo" mostra a legenda com os
+   tempos (SRT) — disponível quando você inclui o formato SRT. Você pode **copiar**, **baixar**
+   cada formato ou **abrir a pasta** onde os arquivos foram salvos.
 
 ### 🕑 Histórico
-Lista todas as transcrições já feitas (guardadas mesmo depois de fechar o app). Clique em "Ver"
-para reabrir o texto, copiar/baixar de novo, ou "Remover" para apagar do histórico.
+Lista todas as transcrições já feitas (guardadas mesmo depois de fechar o app), com **busca por
+nome**. Clique no olho para reabrir o texto (copiar/baixar de novo) ou na lixeira para remover.
 
 ### 📦 Modelos
 Os modelos são o "cérebro" que reconhece a fala. Aqui você **baixa**, **remove**, vê o **espaço
 em disco** ocupado e define qual é o **modelo padrão**. Você só precisa baixar cada modelo uma vez.
+(Suporte a modelos de outros motores, como NVIDIA, está planejado — ver `PLANO_MULTIMOTOR.md`.)
+
+### 📖 Dicionários
+Cadastre listas de **termos específicos** (nomes próprios, palavras técnicas, siglas) que o vídeo
+usa. Ao transcrever, escolha um dicionário: os termos são passados ao modelo como pista
+(`initial_prompt`), ajudando-o a acertar essas palavras. Ex.: um dicionário com "Saitama, One Punch
+Man" faz o modelo grafar esses nomes corretamente.
+
+### Sobre "Identificar falantes diferentes" (diarização)
+A opção existe nas Opções avançadas, marcada como **"em breve"**. Identificar quem fala em diálogos
+exige um segundo modelo de IA (pyannote) e configuração extra; será ativado numa próxima
+atualização. Por enquanto a caixa fica visível para você saber que está no caminho.
 
 ---
 

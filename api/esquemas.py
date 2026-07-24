@@ -18,6 +18,14 @@ class CriarTranscricaoRequest(BaseModel):
     max_duracao: float = Field(6.0, gt=0, le=60)
     beam_size: int = Field(5, ge=1, le=10)
     vad_filter: bool = Field(True, description="Pular trechos de silêncio.")
+    dicionario_id: str | None = Field(None, description="Dicionário de termos a usar (initial_prompt).")
+    diarizar: bool = Field(False, description="Identificar falantes (ainda não implementado no motor).")
+
+
+class DicionarioRequest(BaseModel):
+    nome: str = Field(..., min_length=1)
+    descricao: str | None = None
+    termos: list[str] = Field(default_factory=list)
 
 
 class CriarTranscricaoResposta(BaseModel):

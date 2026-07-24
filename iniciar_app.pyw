@@ -1,40 +1,42 @@
 #!/usr/bin/env python3
-"""Inicia o aplicativo desktop: sobe a API (uvicorn, em processo separado) e abre a
-janela nativa (pywebview).
+"""Inicia o aplicativo desktop.
 
-Dois cuidados importantes contra travamentos:
-- O servidor roda como PROCESSO à parte (não thread), para não competir com a janela.
-- O processo do servidor é amarrado a um "Job Object" do Windows com KILL_ON_JOB_CLOSE:
-  se este launcher morrer (inclusive fechado à força), o servidor morre junto — assim
-  não sobram processos órfãos acumulando e deixando tudo lento.
+Sobe a API (uvicorn) como PROCESSO separado e abre a interface numa janela do
+Microsoft Edge em "modo aplicativo" (--app): uma janela limpa, sem barra de
+navegador, com aparência de programa nativo — mas usando o motor robusto do Edge,
+sem os travamentos que o pywebview causava nesta máquina.
+
+O processo do servidor é amarrado a um Job Object do Windows (KILL_ON_JOB_CLOSE):
+se este launcher morrer, o servidor morre junto (sem processos órfãos).
 """
 
 from __future__ import annotations
 
 import os
+import shutil
 import socket
 import subprocess
 import sys
 import time
+import webbrowser
 from datetime import datetime
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent
 sys.path.insert(0, str(RAIZ))
 
-from api.configuracao import PASTA_DADOS  # noqa: E402  (define a pasta de dados/logs)
+from api.configuracao import PASTA_DADOS  # noqa: E402
 
 PASTA_DADOS.mkdir(parents=True, exist_ok=True)
 LOG = PASTA_DADOS / "launcher.log"
 
-_job_handle = None  # mantém o Job Object vivo enquanto o launcher existir
+_job_handle = None
 
 
 def log(msg: str) -> None:
-    linha = f"[{datetime.now().strftime('%H:%M:%S')}] {msg}"
     try:
         with open(LOG, "a", encoding="utf-8") as f:
-            f.write(linha + "\n")
+            f.write(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}\n")
     except Exception:
         pass
 
@@ -48,7 +50,6 @@ def porta_livre() -> int:
 
 
 def _amarrar_ao_job(proc: subprocess.Popen) -> None:
-    """Amarra o processo a um Job Object que mata o filho se este launcher morrer."""
     if os.name != "nt":
         return
     global _job_handle
@@ -59,14 +60,9 @@ def _amarrar_ao_job(proc: subprocess.Popen) -> None:
         kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
 
         class IO_COUNTERS(ctypes.Structure):
-            _fields_ = [
-                ("ReadOperationCount", ctypes.c_ulonglong),
-                ("WriteOperationCount", ctypes.c_ulonglong),
-                ("OtherOperationCount", ctypes.c_ulonglong),
-                ("ReadTransferCount", ctypes.c_ulonglong),
-                ("WriteTransferCount", ctypes.c_ulonglong),
-                ("OtherTransferCount", ctypes.c_ulonglong),
-            ]
+            _fields_ = [(n, ctypes.c_ulonglong) for n in (
+                "ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
+                "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
 
         class JOBOBJECT_BASIC_LIMIT_INFORMATION(ctypes.Structure):
             _fields_ = [
@@ -91,38 +87,26 @@ def _amarrar_ao_job(proc: subprocess.Popen) -> None:
                 ("PeakJobMemoryUsed", ctypes.c_size_t),
             ]
 
-        JobObjectExtendedLimitInformation = 9
-        JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
-
         job = kernel32.CreateJobObjectW(None, None)
         if not job:
             return
         info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION()
-        info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
-        kernel32.SetInformationJobObject(
-            job,
-            JobObjectExtendedLimitInformation,
-            ctypes.byref(info),
-            ctypes.sizeof(info),
-        )
-        # int(proc._handle) é o HANDLE do processo criado pelo Popen.
+        info.BasicLimitInformation.LimitFlags = 0x00002000  # KILL_ON_JOB_CLOSE
+        kernel32.SetInformationJobObject(job, 9, ctypes.byref(info), ctypes.sizeof(info))
         kernel32.AssignProcessToJobObject(job, int(proc._handle))
         _job_handle = job
-        log("servidor amarrado ao Job Object (morre junto com o launcher)")
+        log("servidor amarrado ao Job Object")
     except Exception as erro:
-        log(f"aviso: não consegui amarrar ao Job Object: {erro!r}")
+        log(f"aviso: Job Object falhou: {erro!r}")
 
 
 def iniciar_servidor(porta: int) -> subprocess.Popen:
     log_servidor = open(PASTA_DADOS / "servidor.log", "w", encoding="utf-8")
-    cmd = [
-        sys.executable, "-m", "uvicorn", "api.main:app",
-        "--host", "127.0.0.1", "--port", str(porta), "--log-level", "warning",
-    ]
+    cmd = [sys.executable, "-m", "uvicorn", "api.main:app",
+           "--host", "127.0.0.1", "--port", str(porta), "--log-level", "warning"]
     flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0  # type: ignore[attr-defined]
-    proc = subprocess.Popen(
-        cmd, cwd=str(RAIZ), stdout=log_servidor, stderr=subprocess.STDOUT, creationflags=flags
-    )
+    proc = subprocess.Popen(cmd, cwd=str(RAIZ), stdout=log_servidor,
+                            stderr=subprocess.STDOUT, creationflags=flags)
     _amarrar_ao_job(proc)
     return proc
 
@@ -139,69 +123,74 @@ def esperar_servidor(url: str, tentativas: int = 200) -> bool:
     return False
 
 
+def _achar_edge() -> str | None:
+    candidatos = [
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+    ]
+    for c in candidatos:
+        if Path(c).is_file():
+            return c
+    achado = shutil.which("msedge")
+    return achado
+
+
+def abrir_janela(url: str) -> subprocess.Popen | None:
+    """Abre o Edge em modo app (janela limpa, sem barra do navegador).
+
+    Usa um perfil próprio (--user-data-dir) para garantir que este é um processo
+    novo e independente — assim conseguimos esperar ele fechar e derrubar o servidor.
+    Retorna o processo do Edge, ou None se abriu no navegador padrão (fallback)."""
+    edge = _achar_edge()
+    perfil = PASTA_DADOS / "janela"
+    perfil.mkdir(parents=True, exist_ok=True)
+    if edge:
+        cmd = [
+            edge,
+            f"--app={url}",
+            f"--user-data-dir={perfil}",
+            "--window-size=1180,840",
+            "--no-first-run",
+            "--no-default-browser-check",
+        ]
+        log(f"abrindo Edge em modo app: {edge}")
+        return subprocess.Popen(cmd)
+    log("Edge não encontrado; abrindo no navegador padrão")
+    webbrowser.open(url)
+    return None
+
+
 def main() -> None:
     log("=== iniciando ===")
     porta = porta_livre()
-    log(f"porta escolhida: {porta}")
+    log(f"porta: {porta}")
 
     servidor = iniciar_servidor(porta)
-    log(f"servidor iniciado (pid {servidor.pid})")
+    log(f"servidor pid {servidor.pid}")
 
     url = f"http://127.0.0.1:{porta}/"
     if not esperar_servidor(url):
-        log("ERRO: servidor não respondeu ao health check")
+        log("ERRO: servidor não respondeu")
         try:
             servidor.terminate()
         except Exception:
             pass
         sys.exit(1)
-    log("servidor respondeu ao health check")
+    log("servidor pronto")
 
-    import webview
-
-    class PontePython:
-        def __init__(self) -> None:
-            self.janela = None
-
-        def escolher_arquivo(self):
-            if self.janela is None:
-                return []
-            resultado = self.janela.create_file_dialog(
-                webview.OPEN_DIALOG,
-                allow_multiple=True,
-                file_types=(
-                    "Vídeos e áudios (*.mp4;*.mkv;*.mov;*.avi;*.webm;*.mp3;*.wav;*.m4a;*.flac;*.ogg)",
-                    "Todos os arquivos (*.*)",
-                ),
-            )
-            return list(resultado) if resultado else []
-
-        def abrir_pasta(self, caminho: str) -> bool:
-            try:
-                os.startfile(caminho)  # type: ignore[attr-defined]
-                return True
-            except Exception:
-                return False
-
-    ponte = PontePython()
-    janela = webview.create_window(
-        "Transcritor de Vídeos e Áudios", url,
-        width=1180, height=820, min_size=(940, 640), js_api=ponte,
-    )
-    ponte.janela = janela
-    log("janela criada, abrindo interface")
-
-    def ao_fechar() -> None:
-        log("janela fechada, encerrando servidor")
-        try:
-            servidor.terminate()
-        except Exception:
-            pass
-
-    janela.events.closed += ao_fechar
+    janela = abrir_janela(url)
 
     try:
-        webview.start()
+        if janela is not None:
+            # Espera a janela do Edge (modo app) fechar; então derruba o servidor.
+            janela.wait()
+            log("janela do Edge fechada")
+        else:
+            # Fallback (navegador padrão): sem processo para esperar; mantém o
+            # servidor vivo até o usuário fechar este launcher.
+            log("modo fallback: servidor rodando; feche esta janela para encerrar")
+            while servidor.poll() is None:
+                time.sleep(1)
     finally:
         try:
             servidor.terminate()

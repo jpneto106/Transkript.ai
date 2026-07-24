@@ -70,6 +70,25 @@ export const api = {
     await json(await fetch(`${BASE}/api/modelos/${nome}`, { method: "DELETE" }));
   },
 
+  async enviarArquivo(arquivo: File, aoProgredir?: (pct: number) => void): Promise<{ caminho: string; nome: string }> {
+    // Usa XMLHttpRequest para ter progresso de upload (fetch não expõe upload progress).
+    return new Promise((resolve, reject) => {
+      const form = new FormData();
+      form.append("arquivo", arquivo);
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${BASE}/api/transcricoes/upload`);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && aoProgredir) aoProgredir(Math.round((e.loaded / e.total) * 100));
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve(JSON.parse(xhr.responseText));
+        else reject(new Error("Falha ao enviar o arquivo."));
+      };
+      xhr.onerror = () => reject(new Error("Falha ao enviar o arquivo."));
+      xhr.send(form);
+    });
+  },
+
   async criarTranscricao(p: ParametrosTranscricao): Promise<{ id: string; status: string }> {
     return json(
       await fetch(`${BASE}/api/transcricoes`, {

@@ -3,15 +3,50 @@
 from __future__ import annotations
 
 import asyncio
+import re
+import shutil
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 
 from .. import bd, trabalhos
+from ..configuracao import PASTA_UPLOADS_APP
 from ..esquemas import CriarTranscricaoRequest, CriarTranscricaoResposta
 
 router = APIRouter()
+
+
+def _nome_seguro(nome: str) -> str:
+    """Remove componentes de caminho e caracteres perigosos do nome enviado."""
+    nome = Path(nome).name  # descarta qualquer diretório
+    nome = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", nome)
+    return nome or "arquivo"
+
+
+@router.post("/upload")
+async def upload(arquivo: UploadFile):
+    """Recebe um arquivo enviado pela interface e o salva em disco, devolvendo o
+    caminho local — que depois é usado no POST /api/transcricoes como 'entrada'."""
+    PASTA_UPLOADS_APP.mkdir(parents=True, exist_ok=True)
+    nome = _nome_seguro(arquivo.filename or "arquivo")
+    destino = PASTA_UPLOADS_APP / nome
+    # Evita sobrescrever: acrescenta sufixo se já existir.
+    if destino.exists():
+        base, ext = destino.stem, destino.suffix
+        i = 2
+        while (PASTA_UPLOADS_APP / f"{base} ({i}){ext}").exists():
+            i += 1
+        destino = PASTA_UPLOADS_APP / f"{base} ({i}){ext}"
+
+    with open(destino, "wb") as saida:
+        while True:
+            pedaco = await arquivo.read(1024 * 1024)  # 1 MB por vez
+            if not pedaco:
+                break
+            saida.write(pedaco)
+    await arquivo.close()
+    return {"caminho": str(destino), "nome": destino.name}
 
 _MEDIA_TYPES = {
     "txt": "text/plain; charset=utf-8",

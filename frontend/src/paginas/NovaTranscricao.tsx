@@ -52,6 +52,8 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
 
   const [arrastando, setArrastando] = useState(false);
   const [erro, setErro] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [progressoUpload, setProgressoUpload] = useState(0);
 
   const [estado, setEstado] = useState<EstadoAoVivo | null>(null);
   const [processando, setProcessando] = useState(false);
@@ -101,10 +103,14 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
     }
   }
 
-  function definirEntrada(valor: string) {
+  function definirEntrada(valor: string, nome?: string) {
     setEntrada(valor);
     setResultado(null);
     setErro("");
+    if (nome !== undefined) {
+      setNomeArquivo(nome);
+      return;
+    }
     const ehUrl = valor.startsWith("http://") || valor.startsWith("https://");
     if (ehUrl) setNomeArquivo("");
     else {
@@ -113,20 +119,31 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
     }
   }
 
+  async function enviarArquivo(arquivo: File) {
+    setErro("");
+    setEnviando(true);
+    setProgressoUpload(0);
+    try {
+      const r = await api.enviarArquivo(arquivo, setProgressoUpload);
+      definirEntrada(r.caminho, r.nome);
+    } catch {
+      setErro("Não consegui carregar esse arquivo. Tente de novo.");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   function aoSoltar(e: React.DragEvent) {
     e.preventDefault();
     setArrastando(false);
-    const arquivo = e.dataTransfer.files?.[0] as (File & { path?: string }) | undefined;
-    if (arquivo?.path) definirEntrada(arquivo.path);
-    else if (arquivo)
-      setErro("Não consegui pegar o local desse arquivo pelo arraste. Clique na área para escolher pelo explorador.");
+    const arquivo = e.dataTransfer.files?.[0];
+    if (arquivo) enviarArquivo(arquivo);
   }
 
   function aoSelecionarInput(e: React.ChangeEvent<HTMLInputElement>) {
-    const arquivo = e.target.files?.[0] as (File & { path?: string }) | undefined;
-    if (arquivo?.path) definirEntrada(arquivo.path);
-    else if (arquivo)
-      setErro("Seu navegador não informa o caminho do arquivo. No aplicativo instalado isso funciona; por aqui, cole o caminho ou um link no campo abaixo.");
+    const arquivo = e.target.files?.[0];
+    if (arquivo) enviarArquivo(arquivo);
+    e.target.value = ""; // permite reescolher o mesmo arquivo depois
   }
 
   async function transcrever() {
@@ -327,7 +344,13 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
       <div className="card blueprint elev-sm" style={{ marginBottom: "var(--space-6)" }}>
         <Canto />
         <h5>1. Qual arquivo transcrever?</h5>
-        {!entrada && (
+        {enviando && (
+          <div>
+            <div style={{ marginBottom: "var(--space-2)", fontSize: 14 }}>Carregando o arquivo… {progressoUpload}%</div>
+            <div className="progress-track"><div className="progress-fill" style={{ width: `${progressoUpload}%` }} /></div>
+          </div>
+        )}
+        {!entrada && !enviando && (
           <>
             <div
               className={`dropzone ${arrastando ? "arrastando" : ""}`}
@@ -343,7 +366,7 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
               <div className="dropzone-titulo">Arraste um arquivo aqui ou clique para escolher</div>
               <div className="dropzone-sub">Aceita vídeos (mp4, mkv, mov...) e áudios (mp3, wav, m4a...)</div>
             </div>
-            <input ref={inputArquivoRef} type="file" style={{ display: "none" }} onChange={aoSelecionarInput} />
+            <input ref={inputArquivoRef} type="file" accept="video/*,audio/*,.mkv,.ts,.opus" style={{ display: "none" }} onChange={aoSelecionarInput} />
             <div className="separador-ou">ou</div>
             <input
               className="input"

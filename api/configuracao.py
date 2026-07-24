@@ -31,6 +31,9 @@ PASTA_SAIDA_APP = RAIZ / "saida"
 # Pasta onde vídeos baixados de URL são guardados.
 PASTA_DOWNLOADS_APP = RAIZ / "entrada" / "_downloads"
 
+# Pasta onde arquivos enviados pela interface (upload) são guardados.
+PASTA_UPLOADS_APP = RAIZ / "entrada" / "_uploads"
+
 # Build de produção do frontend (gerado por `npm run build`).
 PASTA_FRONTEND_DIST = RAIZ / "frontend" / "dist"
 

@@ -1,0 +1,22 @@
+COMO DESINSTALAR O TRANSKRIPT.AI
+================================
+
+Este programa (na versão atual, "portátil") não mexe no registro do Windows.
+Para remover tudo, apague estas pastas:
+
+1) A pasta do programa
+   (esta pasta, onde está o iniciar_app.bat)
+
+2) Os modelos de transcrição baixados
+   C:\Users\<seu_usuario>\.cache\huggingface
+
+3) Os dados do aplicativo (histórico, logs, perfil da janela)
+   C:\Users\<seu_usuario>\AppData\Local\Transcritor
+
+Opcional — o ffmpeg instalado para este programa (só remova se nenhum
+outro programa seu usar o ffmpeg do winget):
+   Abra o Terminal e rode:  winget uninstall Gyan.FFmpeg
+
+Observação: uma versão futura vai centralizar TUDO dentro de uma única pasta
+(e/ou virar um instalador .exe com desinstalador automático), tornando a
+remoção ainda mais simples.

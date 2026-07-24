@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
+import logo from "./assets/logo.png";
 import NovaTranscricao from "./paginas/NovaTranscricao";
 import Historico from "./paginas/Historico";
 import Modelos from "./paginas/Modelos";
@@ -55,18 +56,8 @@ export default function App() {
     <div className="app">
       <aside className="barra-lateral">
         <div className="logo">
-          <div className="logo-marca blueprint">
-            <i className="corner tl" /><i className="corner tr" /><i className="corner bl" /><i className="corner br" />
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-700)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 9a3 3 0 0 1 3-3h1a3 3 0 0 1 3 3v1a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3z" />
-              <path d="M13 5a3 3 0 0 1 3-3h1a3 3 0 0 1 3 3v11a3 3 0 0 1-3 3h-1a3 3 0 0 1-3-3z" />
-              <path d="M2 19h20" />
-            </svg>
-          </div>
-          <div>
-            <h4>Transcritor</h4>
-            <div className="logo-sub">Vídeos e áudios → texto</div>
-          </div>
+          <img className="logo-img" src={logo} alt="Transkript.ai" />
+          <div className="logo-sub">Vídeos e áudios → texto</div>
         </div>
 
         <nav className="nav">

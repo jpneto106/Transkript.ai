@@ -7,6 +7,23 @@ sem que cada consumidor precise lembrar de chamá-lo.
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
+# --- App portátil: tudo dentro da pasta do programa ---
+# Raiz do app = pasta que contém este pacote nucleo/.
+_APP_ROOT = Path(__file__).resolve().parent.parent
+
+# Modelos do Whisper ficam em <app>/modelos (em vez do cache compartilhado do sistema),
+# tornando o programa autossuficiente. setdefault respeita um HF_HOME já definido.
+os.environ.setdefault("HF_HOME", str(_APP_ROOT / "modelos"))
+
+# ffmpeg embutido (se presente em <app>/ferramentas/ffmpeg/bin) tem prioridade no PATH,
+# para o programa não depender de um ffmpeg instalado no sistema.
+_FFMPEG_BIN = _APP_ROOT / "ferramentas" / "ffmpeg" / "bin"
+if _FFMPEG_BIN.is_dir():
+    os.environ["PATH"] = str(_FFMPEG_BIN) + os.pathsep + os.environ.get("PATH", "")
+
 from .dispositivo import _registrar_dlls_nvidia
 
 _registrar_dlls_nvidia()

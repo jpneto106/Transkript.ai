@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 # Raiz do projeto (a pasta que contém este pacote api/).
@@ -12,13 +11,10 @@ RAIZ = Path(__file__).resolve().parent.parent
 def _pasta_dados() -> Path:
     """Pasta de dados do app (banco, preferências, logs).
 
-    IMPORTANTE: fica FORA do projeto quando este está dentro do OneDrive. O OneDrive
-    sincroniza/bloqueia arquivos em tempo real, o que deixa o SQLite lento e pode
-    travar o app. Por isso usamos %LOCALAPPDATA% no Windows (nunca sincronizado)."""
-    base = os.environ.get("LOCALAPPDATA")
-    if os.name == "nt" and base:
-        return Path(base) / "Transcritor"
-    return Path.home() / ".transcritor"
+    App portátil: fica DENTRO da pasta do programa (<app>/dados), para que apagar a
+    pasta remova tudo. A recomendação é manter o programa FORA do OneDrive, para o
+    OneDrive não sincronizar/bloquear o banco SQLite em tempo real."""
+    return RAIZ / "dados"
 
 
 # Pasta de dados do app (banco de histórico, preferências, logs).

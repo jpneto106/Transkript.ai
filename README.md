@@ -16,6 +16,32 @@
   <img alt="Interface" src="https://img.shields.io/badge/interface-React%20%2B%20FastAPI-success">
 </p>
 
+<p align="center">
+  <a href="https://github.com/jpneto106/Transkript.ai/releases/latest">
+    <img alt="Baixar para Windows" src="https://img.shields.io/badge/⬇%20Baixar%20para%20Windows-instalador%20.exe-2ea44f?style=for-the-badge&logo=windows&logoColor=white">
+  </a>
+</p>
+
+---
+
+> ## 💾 Instalar no Windows
+>
+> **Baixe o instalador, dê dois cliques e pronto.** Não precisa ter Python, Node.js
+> nem ffmpeg na máquina — vem tudo dentro do pacote.
+>
+> | | |
+> |---|---|
+> | **Arquivo** | `Transkript.ai-2.0.0-instalador.exe` |
+> | **Sistema** | Windows 10 ou 11 (64 bits) |
+> | **Administrador** | Não pede senha — instala na sua pasta de usuário |
+> | **Placa de vídeo** | NVIDIA acelera bastante, mas é opcional (sem ela, roda no processador) |
+> | **Desinstalar** | *Configurações → Aplicativos → Transkript.ai* — sai sem deixar resíduo |
+>
+> ### ➡️ **[Baixar a versão mais recente](https://github.com/jpneto106/Transkript.ai/releases/latest)**
+>
+> <sub>O Windows pode mostrar um aviso de *"Editor desconhecido"* — o instalador não é
+> assinado digitalmente. Clique em **Mais informações → Executar assim mesmo**.</sub>
+
 ---
 
 ## ✨ O que faz
@@ -35,13 +61,18 @@
 
 ## 🖥️ Requisitos
 
-- **Windows 10/11** (o app abre numa janela do Microsoft Edge em modo aplicativo).
-- **Python 3.11+** (testado em 3.13).
-- **Node.js 18+** (apenas para compilar a interface).
-- **ffmpeg** — usado para ler áudio/vídeo e baixar de links. Na versão portátil ele já vem
-  **embutido** na pasta (`ferramentas/ffmpeg`); instalando a partir do código, tenha o ffmpeg no
-  sistema (ex.: `winget install Gyan.FFmpeg`).
+**Usando o instalador (`.exe`)** — só isto:
+
+- **Windows 10 ou 11**, 64 bits.
 - **GPU NVIDIA** é opcional, mas deixa a transcrição bem mais rápida.
+
+Python, Node.js, ffmpeg e as bibliotecas CUDA já vão dentro do pacote.
+
+**Rodando a partir do código** — além do acima:
+
+- **Python 3.11+** (testado em 3.13) e **Node.js 18+** (para compilar a interface).
+- **ffmpeg** no sistema (ex.: `winget install Gyan.FFmpeg`) ou embutido em `ferramentas/ffmpeg`.
+- **.NET SDK 10** e **Inno Setup 6**, apenas se você for gerar o instalador.
 
 ---
 
@@ -70,9 +101,12 @@ venv\Scripts\python.exe -m pip install nvidia-cublas-cu12 nvidia-cudnn-cu12
 ## ▶️ Como usar
 
 ### Interface gráfica
-Dê **duplo-clique em `iniciar_app.bat`**. Abre uma janela onde você escolhe o arquivo (ou cola um
-link), ajusta as opções (ou usa os padrões) e clica em **Transcrever**. O resultado aparece na tela,
-com botões para copiar, baixar e abrir a pasta.
+Instalado pelo `.exe`, abra **Transkript.ai** pelo menu Iniciar ou pelo atalho da área de trabalho.
+Rodando a partir do código, dê **duplo-clique em `iniciar_app.bat`**.
+
+Abre uma janela onde você escolhe o arquivo (ou cola um link), ajusta as opções (ou usa os padrões)
+e clica em **Transcrever**. O resultado aparece na tela, com botões para copiar, baixar e abrir a
+pasta. Na primeira transcrição o modelo escolhido é baixado — depois disso funciona sem internet.
 
 ### Linha de comando
 ```bash
@@ -94,7 +128,7 @@ Rode `transcrever.py --help` para ver todas.
 ## 🧩 Como funciona (arquitetura)
 
 ```
-  Janela (Microsoft Edge --app)
+  Janela nativa em C# (WebView2)  (casca/)
         │  interface web
   React + TypeScript  (frontend/)
         │  HTTP + WebSocket
@@ -109,27 +143,32 @@ Rode `transcrever.py --help` para ver todas.
   tanto pela CLI quanto pela API.
 - **`api/`** — servidor FastAPI: transcrição em fila, histórico (SQLite), modelos e dicionários.
 - **`frontend/`** — interface React (telas de Nova transcrição, Histórico, Modelos, Dicionários).
-- **`iniciar_app.pyw` / `iniciar_app.bat`** — sobem o servidor e abrem a janela.
+- **`casca/`** — janela nativa (C# + WebView2) que sobe o servidor e mostra a interface.
+- **`empacotar.py` / `servidor.spec` / `instalador/`** — geram a pasta final e o instalador `.exe`.
+- **`iniciar_app.pyw` / `iniciar_app.bat`** — modo desenvolvimento: sobem o servidor a partir do código.
 
 Documentação detalhada em [`DOCUMENTACAO.md`](DOCUMENTACAO.md) (CLI) e
 [`DOCUMENTACAO_APP.md`](DOCUMENTACAO_APP.md) (aplicativo).
 
 ---
 
-## 📦 Instalação portátil e desinstalação
+## 📦 Desinstalação
 
-O aplicativo é **portátil e autossuficiente**: tudo — programa, modelos, dados e ffmpeg — fica
-dentro de uma única pasta. Não mexe no registro do Windows nem espalha arquivos pelo sistema.
-Recomenda-se mantê-lo **fora do OneDrive** (ex.: `C:\Transkript.ai`), para o OneDrive não
-sincronizar/bloquear os arquivos.
+O aplicativo é **autossuficiente**: tudo — programa, modelos, dados, ffmpeg e as bibliotecas
+CUDA — fica dentro de uma única pasta. Não espalha arquivos pelo sistema.
 
-**Para desinstalar, basta apagar a pasta.** Detalhes em [`COMO_DESINSTALAR.txt`](COMO_DESINSTALAR.txt).
+- **Instalado pelo `.exe`:** *Configurações → Aplicativos → Transkript.ai → Desinstalar*. O
+  desinstalador pergunta se você quer apagar também os modelos baixados e o histórico.
+- **Rodando a partir do código:** basta apagar a pasta.
+
+Detalhes em [`COMO_DESINSTALAR.txt`](COMO_DESINSTALAR.txt).
 
 ---
 
 ## 🗺️ Roadmap
 
-- [ ] Instalador `.exe` para Windows (baixar e instalar, sem depender de Python) — como *Release*.
+- [x] Instalador `.exe` para Windows (baixar e instalar, sem depender de Python) — como *Release*.
+- [ ] Assinatura digital do instalador (hoje o Windows mostra *"Editor desconhecido"*).
 - [ ] Identificação de falantes (diarização).
 - [ ] Suporte a outros motores de transcrição (NVIDIA NeMo etc.) — ver [`PLANO_MULTIMOTOR.md`](PLANO_MULTIMOTOR.md).
 - [ ] Resumo automático e tradução.

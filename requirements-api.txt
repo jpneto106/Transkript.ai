@@ -12,3 +12,18 @@ python-multipart>=0.0.9
 #   fpdf2:       gera .pdf. Sem ele, idem.
 python-docx>=1.1.0
 fpdf2>=2.7.9
+# Motor de transcrição NVIDIA (Parakeet/Canary) via onnx-asr. Sem este pacote,
+# pedir um desses modelos dá erro de import. CPU-only por padrão; com as
+# libs CUDA abaixo e ``onnxruntime-gpu`` no lugar de ``onnxruntime``, usa GPU.
+onnx-asr>=0.7
+# onnxruntime com CUDA EP embutido (versão GPU). Sem GPU instalada, ainda
+# funciona — cai para CPU EP automaticamente, só perde a aceleração. Esta
+# versão inclui o CPU EP também, então substitui a ``onnxruntime`` padrão
+# sem quebrar o Whisper.
+onnxruntime-gpu>=1.18
+# CUDA 12 para os modelos NVIDIA Parakeet/Canary. Sem essas duas o
+# onnxruntime-gpu dá "Library cublas64_12.dll is not found" ao usar Parakeet.
+# (Sem GPU, esses pacotes ficam instalados mas inativos — o motor cai
+# para CPU sozinho.)
+nvidia-cublas-cu12
+nvidia-cudnn-cu12

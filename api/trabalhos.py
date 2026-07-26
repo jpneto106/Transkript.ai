@@ -94,20 +94,26 @@ _modelo_lock = threading.Lock()
 # dois convivem na GPU e limpar um não pode derrubar o outro.
 _pipeline_diarizacao: dict[str, Any] = {}
 _pipeline_lock = threading.Lock()
+_pipeline_pre_carregada = False  # True se o pre-load na thread principal deu certo
 
 # Pré-carrega a pipeline de diarização na thread principal durante o import.
 # ThreadPoolExecutor + PyTorch CUDA podem causar deadlock de contexto —
 # carregar a pipeline aqui evita que ela seja carregada pela primeira vez
-# dentro de uma thread filha.
+# dentro de uma thread filha. Se falhar, a flag _pipeline_pre_carregada
+# fica False e _obter_pipeline_diarizacao levanta erro em vez de tentar
+# carregar no worker (o que travaria de novo).
 if diarizacao_disponivel():
     try:
         _pipeline_diarizacao["cpu"] = carregar_pipeline("cpu")
         import torch
         if torch.cuda.is_available():
             _pipeline_diarizacao["cuda"] = carregar_pipeline("cuda")
+        _pipeline_pre_carregada = True
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        import sys, traceback
+        print(f"[DIAR] FALHA ao pre-carregar pipeline: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        _pipeline_diarizacao.clear()
 
 
 def _agora() -> str:
@@ -175,6 +181,11 @@ def _obter_modelo(nome: str, dispositivo: str, compute_type: str):
 def _obter_pipeline_diarizacao(dispositivo: str):
     with _pipeline_lock:
         if dispositivo not in _pipeline_diarizacao:
+            if not _pipeline_pre_carregada:
+                raise RuntimeError(
+                    "Pipeline de diarização não foi pré-carregada na inicialização. "
+                    "Veja servidor.log para o erro."
+                )
             _pipeline_diarizacao[dispositivo] = carregar_pipeline(dispositivo)
         return _pipeline_diarizacao[dispositivo]
 

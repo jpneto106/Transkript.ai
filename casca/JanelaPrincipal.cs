@@ -87,7 +87,7 @@ internal sealed class JanelaPrincipal : Form
         var opcoes = nucleo.Settings;
 
         // Deixar com cara de programa, não de navegador.
-        opcoes.AreDefaultContextMenusEnabled = _modoDesenvolvedor;
+        opcoes.AreDefaultContextMenusEnabled = true;   // botão direito → Colar
         opcoes.AreDevToolsEnabled = _modoDesenvolvedor;
         opcoes.IsStatusBarEnabled = false;
         opcoes.IsSwipeNavigationEnabled = false;

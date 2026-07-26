@@ -88,6 +88,24 @@ export const api = {
     );
   },
 
+  async testarConexaoResumo(payload: {
+    config: {
+      chave_provedor: string;
+      chave_api: string;
+      modelo: string;
+      estilo: string;
+      max_tokens: number;
+    };
+  }): Promise<{ status: string; mensagem: string }> {
+    return json(
+      await fetch(`${BASE}/api/resumos/testar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto: "Diga OK", config: payload.config }),
+      }),
+    );
+  },
+
   async definirModeloPadrao(modelo: string): Promise<Record<string, string>> {
     return json(
       await fetch(`${BASE}/api/config`, {

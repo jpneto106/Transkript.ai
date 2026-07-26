@@ -56,3 +56,25 @@ def resumir(req: ResumirRequest):
         # o erro bruto).
         raise HTTPException(status_code=502, detail=str(erro)) from erro
     return {"resumo": texto_resumido}
+
+
+@router.post("/resumos/testar")
+def testar_conexao(req: ResumirRequest):
+    """Faz uma chamada curta ao provedor para validar a conexão.
+
+    Envia um prompt mínimo ("Diga OK") e espera resposta. Se o provedor
+    responder, considera sucesso. Se falhar (timeout, HTTP 5xx, chave
+    inválida), devolve HTTP 502 com a mensagem do erro.
+    """
+    config = ConfigResumo(
+        chave_provedor=req.config.chave_provedor,
+        chave_api=req.config.chave_api,
+        modelo=req.config.modelo,
+        estilo=req.config.estilo,
+        max_tokens=10,
+    )
+    try:
+        resumir_texto("Diga OK", config)
+    except RuntimeError as erro:
+        raise HTTPException(status_code=502, detail=str(erro)) from erro
+    return {"status": "ok", "mensagem": "Conexao estabelecida com sucesso."}

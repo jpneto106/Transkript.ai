@@ -15,7 +15,6 @@ type Secao =
   | "geral"
   | "privacidade"
   | "transcricao"
-  | "modelos"
   | "finetuning"
   | "resumo"
   | "api"
@@ -62,6 +61,8 @@ export default function Configuracoes() {
   const [iaModelo, setIaModelo] = useState("");
   const [iaEstilo, setIaEstilo] = useState("curto");
   const [iaMaxTokens, setIaMaxTokens] = useState(1024);
+  const [testando, setTestando] = useState(false);
+  const [resultadoTeste, setResultadoTeste] = useState<string | null>(null);
 
   // UI
   const [salvando, setSalvando] = useState(false);
@@ -162,19 +163,6 @@ export default function Configuracoes() {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 20h9" />
           <path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z" />
-        </svg>
-      ),
-    },
-    {
-      grupo: "TRANSCRIÇÃO",
-      chave: "modelos",
-      rotulo: "Selecionar modelo",
-      icone: (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="m7.5 4.27 9 5.15" />
-          <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-          <path d="m3.3 7 8.7 5 8.7-5" />
-          <path d="M12 22V12" />
         </svg>
       ),
     },
@@ -475,32 +463,6 @@ export default function Configuracoes() {
       </>
     );
   }
-
-  function renderModelos() {
-    return (
-      <>
-        <h2 style={{ marginTop: 0 }}>Selecionar modelo</h2>
-        <p className="pagina-desc">
-          A escolha detalhada de modelos, downloads e remoção acontece na aba
-          dedicada na coluna à esquerda.
-        </p>
-        <div className="card blueprint elev-sm">
-          <Canto />
-          <p>
-            Veja <strong>Modelos</strong> na coluna ao lado para baixar, listar
-            e remover modelos do Whisper, Parakeet ou Canary. O modelo
-            <em> padrão</em> escolhido aqui nesta aba (em{" "}
-            <strong>Transcrição</strong>) só vale para novas transcrições
-            que você iniciar depois de salvar.
-          </p>
-          <div className="acoes">
-            <a className="btn btn-secondary blueprint" href="#modelos"><Canto />Ir para Modelos</a>
-          </div>
-        </div>
-      </>
-    );
-  }
-
   function renderFinetuning() {
     return (
       <>
@@ -575,6 +537,29 @@ export default function Configuracoes() {
             <div className="field">
               <label>Tamanho: {iaMaxTokens} tokens</label>
               <input type="range" min={128} max={4096} step={64} value={iaMaxTokens} onChange={(e) => setIaMaxTokens(Number(e.target.value))} />
+            </div>
+            <div className="acoes" style={{ marginTop: "var(--space-4)" }}>
+              <button
+                className="btn btn-secondary blueprint"
+                onClick={async () => {
+                  setTestando(true);
+                  setResultadoTeste(null);
+                  try {
+                    await api.testarConexaoResumo({
+                      config: { chave_provedor: iaProvedor, chave_api: iaChave, modelo: iaModelo, estilo: iaEstilo, max_tokens: iaMaxTokens }
+                    });
+                    setResultadoTeste("✅ Conectado com sucesso.");
+                  } catch (e: any) {
+                    setResultadoTeste("❌ " + (e?.message ?? "Falha na conexão."));
+                  } finally {
+                    setTestando(false);
+                  }
+                }}
+                disabled={testando}
+              >
+                <Canto />{testando ? "Testando..." : "Testar conexão"}
+              </button>
+              {resultadoTeste && <span style={{ marginLeft: "var(--space-3)", fontSize: ".9em" }}>{resultadoTeste}</span>}
             </div>
           </>)}
         </div>
@@ -740,7 +725,6 @@ export default function Configuracoes() {
     geral: renderGeral(),
     privacidade: renderPrivacidade(),
     transcricao: renderTranscricao(),
-    modelos: renderModelos(),
     finetuning: renderFinetuning(),
     api: renderApi(),
     resumo: renderResumo(),

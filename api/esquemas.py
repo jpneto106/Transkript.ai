@@ -86,6 +86,28 @@ class AtualizarConfigRequest(BaseModel):
     )
 
 
+class ResumoConfigRequest(BaseModel):
+    """Config do provedor de IA dentro do POST /api/resumos.
+
+    Os campos são os mesmos que ``ConfigResumo`` em nucleo/resumos/cliente.py —
+    mantemos o schema fora do módulo de nucleo (que não pode depender de
+    Pydantic) para preservar a fronteira.
+    """
+
+    chave_provedor: str
+    chave_api: str = ""
+    modelo: str = ""
+    estilo: str = "curto"
+    max_tokens: int = Field(1024, ge=128, le=8192)
+
+
+class ResumirRequest(BaseModel):
+    """Payload do POST /api/resumos."""
+
+    texto: str = Field(..., min_length=1)
+    config: ResumoConfigRequest
+
+
 class OpcoesResposta(BaseModel):
     modelos: list[str] = MODELOS_DISPONIVEIS
     formatos: list[str] = FORMATOS_DISPONIVEIS

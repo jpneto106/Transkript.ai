@@ -31,7 +31,7 @@
 >
 > | | |
 > |---|---|
-> | **Arquivo** | `Transkript.ai-3.0.0-instalador.exe` |
+> | **Arquivo** | `Transkript.ai-4.0.0-instalador.exe` |
 > | **Sistema** | Windows 10 ou 11 (64 bits) |
 > | **Administrador** | Não pede senha — instala na sua pasta de usuário |
 > | **Placa de vídeo** | NVIDIA acelera bastante, mas é opcional (sem ela, roda no processador) |
@@ -56,14 +56,29 @@
   Parakeet/Canary (mais rápidos e leves, com menos idiomas).
 - **Roda na GPU (NVIDIA/CUDA) ou na CPU**, detectando automaticamente o que há disponível.
 - **Aceita arquivo do computador ou link** (YouTube etc., via `yt-dlp`).
-- **Vários formatos de saída**: `TXT` (texto), `SRT` e `VTT` (legendas com tempo) e `JSON` (dados).
-- **Controle do tamanho dos blocos** de legenda (por caracteres e por duração).
-- **Interface gráfica** com tema claro/escuro, histórico das transcrições e gerenciador de modelos.
-- **Dicionários de termos**: cadastre nomes próprios e jargões para o modelo acertar melhor.
-- **Cancele a qualquer momento** e veja a duração do arquivo antes de começar.
+- **Vários formatos de saída**: `TXT`, `SRT`, `VTT`, `JSON`, `HTML`, `DOCX`
+  e `PDF` (HTML sai sem dependência nova; DOCX/PDF precisam de
+  `python-docx`/`fpdf2`, já inclusos no instalador).
+- **Presets de legenda** (padrão, longo, curto, **reel** para vídeos
+  curtos, frase) com quebra em fim de frase.
+- **Resumo por IA** (opt-in, desligado por padrão): LM Studio, Ollama,
+  Groq, OpenRouter, Mistral, OpenAI e Claude. A chave fica só no seu
+  computador.
+- **Interface gráfica** com tema claro/escuro, histórico das
+  transcrições, gerenciador de modelos, dicionários de termos, presets
+  de legenda, resumo por IA e tela de configurações.
+- **Dicionários de termos**: cadastre nomes próprios e jargões para o
+  modelo acertar melhor.
+- **Cancele a qualquer momento** e veja a duração do arquivo antes de
+  começar.
 - **Linha de comando** (CLI) para quem preferir automatizar.
 
-> Privacidade: todo o processamento acontece na sua máquina. Seus áudios e vídeos não saem do computador.
+> **Privacidade (v4):** a transcrição é 100% local — áudio, vídeo e texto
+> ficam na sua máquina. A função de **Resumo por IA** é opt-in e desligada
+> por padrão; quando ativada e você escolhe um provedor de nuvem, o
+> programa envia o texto só para esse provedor, com a sua chave. Provedores
+> locais (LM Studio, Ollama) mantêm o tráfego na sua rede. Detalhes em
+> `AVISOS_DE_TERCEIROS.txt`.
 
 ---
 
@@ -178,10 +193,12 @@ Detalhes em [`COMO_DESINSTALAR.txt`](COMO_DESINSTALAR.txt).
 - [x] Instalador `.exe` para Windows (baixar e instalar, sem depender de Python) — como *Release*.
 - [x] Identificação de falantes (diarização), com o modelo já embutido no instalador.
 - [x] Suporte a outros motores de transcrição — NVIDIA Parakeet e Canary, ao lado do Whisper.
+- [x] Saídas HTML, DOCX e PDF (v4).
+- [x] Presets de legenda (padrão, longo, curto, **reel**, frase) (v4).
+- [x] Resumo por IA com 7 provedores — opt-in, desligado por padrão (v4).
 - [ ] Editor da transcrição: corrigir o texto e renomear os falantes ("Falante 1" → "Ana"),
       com player sincronizado e linha do tempo por participante.
 - [ ] Assinatura digital do instalador (hoje o Windows mostra *"Editor desconhecido"*).
-- [ ] Resumo automático e tradução.
 
 ---
 

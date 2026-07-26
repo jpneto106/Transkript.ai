@@ -1,23 +1,31 @@
 """Rotas de provedores de IA para o resumo por IA (Etapa 7 do plano v4-leve).
 
-Apenas lista os provedores suportados e os estilos de resumo. O endpoint
-``POST /resumos`` que de fato chama o provedor escolhido vai entrar em outra
-rota; este arquivo só expõe o catálogo para o frontend.
+Lista o catálogo de provedores e estilos e expõe o endpoint ``POST /resumos``
+que de fato chama o provedor escolhido via ``nucleo.resumos.cliente.resumir``.
+
+Erros do provedor (HTTP 5xx, timeout, URL inacessível) viram
+``HTTPException(502)`` com a mensagem do ``cliente`` na propriedade
+``detail``.
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
-from nucleo.resumos.cliente import provedores_disponiveis
+from nucleo.resumos.cliente import (
+    ConfigResumo,
+    provedores_disponiveis,
+    resumir as resumir_texto,
+)
 from nucleo.resumos.provedores import ESTILOS
+from ..esquemas import ResumirRequest
 
 router = APIRouter()
 
 
 @router.get("/provedores")
 def listar_provedores():
-    """Devolve provedores e estilos para a tela de Configurações."""
+    """Devolve provedores e estilos para a tela de Resumir."""
     return {
         "provedores": provedores_disponiveis(),
         "estilos": [{"chave": e.chave, "rotulo": e.rotulo} for e in ESTILOS],
@@ -25,25 +33,26 @@ def listar_provedores():
 
 
 @router.post("/resumos")
-def resumir(req: dict):
-    """Stub — a implementação completa entra na Etapa 7.4.1.
+def resumir(req: ResumirRequest):
+    """Manda o texto para o provedor configurado e devolve o resumo.
 
-    Por enquanto devolve uma mensagem pedindo para usar o ``transcrever.py`` /
-    API Python diretamente, mantendo o frontend funcional. Quando o stub
-    for substituído, o payload esperado é::
-
-        {
-          "texto": "<texto a resumir>",
-          "chave_provedor": "ollama",
-          "chave_api": "",
-          "modelo": "",
-          "estilo": "curto",
-          "max_tokens": 1024
-        }
-
-    A resposta é ``{"resumo": "..."}`` ou um erro HTTP 4xx/5xx.
+    O frontend envia sempre ``texto`` + ``config`` com todos os campos
+    preenchidos. Esta rota é síncrona e bloqueia enquanto o provedor
+    responde (até o timeout de 180 s definido em ``cliente._executar_*``).
+    Para uso normal com um único usuário isso basta.
     """
-    return {
-        "resumo": "",
-        "aviso": "Endpoint ainda não implementado. Use Configurações para ativar/desativar.",
-    }
+    config = ConfigResumo(
+        chave_provedor=req.config.chave_provedor,
+        chave_api=req.config.chave_api,
+        modelo=req.config.modelo,
+        estilo=req.config.estilo,
+        max_tokens=req.config.max_tokens,
+    )
+    try:
+        texto_resumido = resumir_texto(req.texto, config)
+    except RuntimeError as erro:
+        # Erro do provedor vira 502 Bad Gateway — o frontend mostra a
+        # mensagem explicando o que aconteceu (sem precisar decodificar
+        # o erro bruto).
+        raise HTTPException(status_code=502, detail=str(erro)) from erro
+    return {"resumo": texto_resumido}

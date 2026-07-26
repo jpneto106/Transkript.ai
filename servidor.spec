@@ -88,6 +88,10 @@ a = Analysis(  # noqa: F821
         "matplotlib",
         "PyQt5",
         "PySide6",
+        # Pillow (PIL): sem uso direto no projeto (verificado em nucleo/, api/,
+        # servidor.py, transcrever.py e testes/). Chega ao bundle por arraste
+        # transitivo de pacotes de ML; excluí-lo economiza ~13 MB do instalador.
+        "PIL",
     ],
     noarchive=False,
     optimize=0,

@@ -95,6 +95,72 @@ def _nvidia_carregar(nome: str, dispositivo: str, compute_type: str):
     return onnx_asr.load_model(nome_onnx, quantization=None if tem_gpu else "int8")
 
 
+# Medido nesta máquina com o parakeet-v3 (áudio de 8 min, int8 na CPU):
+#     60s -> 5,9s | 120s -> 8,1s | 180s -> 13,9s | 240s -> 32,3s
+#    300s -> 172s (!) | 420s -> falha do onnxruntime
+# O custo da atenção cresce ao quadrado, então trechos longos não só arriscam
+# estourar como ficam MUITO mais lentos. 120s é o ponto mais eficiente e fica
+# bem longe do limite.
+_JANELA_SEGUNDOS = 120.0
+
+#: Quanto procurar por silêncio antes do fim da janela, para cortar numa pausa.
+_BUSCA_SILENCIO_SEGUNDOS = 8.0
+
+#: Tamanho do quadro usado para medir volume ao procurar a pausa.
+_QUADRO_SEGUNDOS = 0.02
+
+
+def _ponto_mais_silencioso(amostras, inicio: int, fim: int, taxa: int) -> int:
+    """Índice do trecho mais silencioso entre `inicio` e `fim`.
+
+    Serve para cortar o áudio numa pausa em vez de no meio de uma palavra. Se
+    não houver pausa nenhuma (fala contínua), devolve o ponto mais quieto que
+    encontrar — o corte acontece de qualquer jeito, porque o limite do modelo
+    não é negociável.
+    """
+    import numpy as np
+
+    quadro = max(1, int(_QUADRO_SEGUNDOS * taxa))
+    trecho = amostras[inicio:fim]
+    if len(trecho) < quadro * 2:
+        return fim
+
+    sobra = len(trecho) % quadro
+    if sobra:
+        trecho = trecho[:-sobra]
+    quadros = trecho.reshape(-1, quadro)
+    energia = np.abs(quadros).mean(axis=1)
+    return inicio + int(energia.argmin()) * quadro
+
+
+def _fatiar_audio(amostras, taxa: int) -> list[tuple[int, int]]:
+    """Divide o áudio em pedaços que o modelo aguenta, cortando em pausas.
+
+    O silêncio é apenas a PREFERÊNCIA de onde cortar; o limite de duração é
+    obrigatório. Assim funciona também em áudio sem pausa alguma — uma narração
+    corrida, por exemplo.
+    """
+    total = len(amostras)
+    janela = int(_JANELA_SEGUNDOS * taxa)
+    if total <= janela:
+        return [(0, total)]
+
+    margem = int(_BUSCA_SILENCIO_SEGUNDOS * taxa)
+    pedacos: list[tuple[int, int]] = []
+    inicio = 0
+    while total - inicio > janela:
+        fim_maximo = inicio + janela
+        # Procura a pausa só no fim da janela: cortar antes desperdiçaria a
+        # capacidade do modelo e criaria pedaços curtos demais.
+        corte = _ponto_mais_silencioso(amostras, fim_maximo - margem, fim_maximo, taxa)
+        if corte <= inicio:
+            corte = fim_maximo
+        pedacos.append((inicio, corte))
+        inicio = corte
+    pedacos.append((inicio, total))
+    return pedacos
+
+
 def _tokens_para_palavras(tokens, tempos, duracao: float) -> list[Palavra]:
     """Junta os pedaços de palavra devolvidos pelo modelo em palavras inteiras.
 
@@ -142,20 +208,36 @@ def _nvidia_transcrever(modelo, arquivo: Path, **opcoes) -> ResultadoTranscricao
         ao_progredir(EventoProgresso(arquivo, 0.0, duracao))
 
     inicio = time.perf_counter()
-    # O modelo processa o arquivo inteiro de uma vez: não há progresso parcial,
-    # por isso a barra fica indeterminada. Em compensação é rápido (~5% da
-    # duração do áudio), então a espera é curta.
-    bruto = modelo.with_timestamps().recognize(
-        amostras, sample_rate=_TAXA, language=opcoes.get("idioma") or None
-    )
+    com_tempos = modelo.with_timestamps()
+    idioma = opcoes.get("idioma") or None
+
+    # Áudio longo é processado em pedaços: o modelo tem um teto rígido e, bem
+    # antes dele, fica desproporcionalmente lento. Fatiar também dá progresso
+    # de verdade ao usuário, em vez de uma barra parada.
+    pedacos = _fatiar_audio(amostras, _TAXA)
+    palavras: list[Palavra] = []
+
+    for indice, (ini, fim) in enumerate(pedacos):
+        if cancelado is not None and cancelado():
+            raise TranscricaoCancelada()
+
+        deslocamento = ini / _TAXA
+        bruto = com_tempos.recognize(
+            amostras[ini:fim], sample_rate=_TAXA, language=idioma
+        )
+        duracao_pedaco = (fim - ini) / _TAXA
+        for palavra in _tokens_para_palavras(
+            getattr(bruto, "tokens", []), getattr(bruto, "timestamps", []), duracao_pedaco
+        ):
+            # Os tempos voltam relativos ao pedaço; trazemos para o áudio inteiro.
+            palavra.inicio += deslocamento
+            palavra.fim += deslocamento
+            palavras.append(palavra)
+
+        if ao_progredir is not None:
+            ao_progredir(EventoProgresso(arquivo, fim / _TAXA, duracao))
+
     tempo_processamento = time.perf_counter() - inicio
-
-    if cancelado is not None and cancelado():
-        raise TranscricaoCancelada()
-
-    palavras = _tokens_para_palavras(
-        getattr(bruto, "tokens", []), getattr(bruto, "timestamps", []), duracao
-    )
 
     resultado = ResultadoTranscricao(
         arquivo=arquivo,
@@ -172,8 +254,6 @@ def _nvidia_transcrever(modelo, arquivo: Path, **opcoes) -> ResultadoTranscricao
         max_duracao=opcoes["max_duracao"],
     )
 
-    if ao_progredir is not None:
-        ao_progredir(EventoProgresso(arquivo, duracao, duracao))
     return resultado
 
 

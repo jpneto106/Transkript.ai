@@ -5,9 +5,10 @@ import NovaTranscricao from "./paginas/NovaTranscricao";
 import Historico from "./paginas/Historico";
 import Modelos from "./paginas/Modelos";
 import Dicionarios from "./paginas/Dicionarios";
+import Resumir from "./paginas/Resumir";
 import Configuracoes from "./paginas/Configuracoes";
 
-type Aba = "nova" | "historico" | "modelos" | "dicionarios" | "configuracoes";
+type Aba = "nova" | "historico" | "modelos" | "dicionarios" | "resumir" | "configuracoes";
 type Tema = "claro" | "escuro";
 
 function usarTema(): [Tema, () => void] {
@@ -132,6 +133,21 @@ export default function App() {
             Dicionários
           </ItemNav>
           <ItemNav
+            ativo={aba === "resumir"}
+            onClick={() => irPara("resumir")}
+            icone={
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9.5 14.5 3.5 8.5" />
+                <path d="m14.5 9.5 6.5 6" />
+                <path d="M8.5 9.5l-5 5" />
+                <path d="m15.5 14.5 5-5" />
+                <path d="m3 3 18 18" />
+              </svg>
+            }
+          >
+            Resumir com IA
+          </ItemNav>
+          <ItemNav
             ativo={aba === "configuracoes"}
             onClick={() => irPara("configuracoes")}
             icone={
@@ -192,6 +208,11 @@ export default function App() {
           {visitadas.has("dicionarios") && (
             <Painel ativo={aba === "dicionarios"}>
               <Dicionarios />
+            </Painel>
+          )}
+          {visitadas.has("resumir") && (
+            <Painel ativo={aba === "resumir"}>
+              <Resumir />
             </Painel>
           )}
           {visitadas.has("configuracoes") && (

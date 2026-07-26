@@ -14,24 +14,9 @@ type Secao =
   | "transcricao"
   | "modelos"
   | "finetuning"
-  | "resumo"
   | "api"
   | "avancado"
   | "sobre";
-
-interface ProvedorInfo {
-  chave: string;
-  rotulo: string;
-  provedor: string;
-  url_base_padrao: string;
-  modelo_padrao: string;
-  precisa_chave: boolean;
-}
-
-interface EstiloInfo {
-  chave: string;
-  rotulo: string;
-}
 
 // Copiado do nucleo/blocos.py. Mantido em sincronia via este código estar
 // dentro de uma função pura; poderia vir da API depois.
@@ -64,16 +49,6 @@ export default function Configuracoes() {
   const [presetBlocos, setPresetBlocos] = useState<string>("padrao");
   const [diarizarPorPadrao, setDiarizarPorPadrao] = useState<boolean>(false);
 
-  // Resumo por IA
-  const [provedoresResumo, setProvedoresResumo] = useState<ProvedorInfo[]>([]);
-  const [estilosResumo, setEstilosResumo] = useState<EstiloInfo[]>([]);
-  const [iaLigado, setIaLigado] = useState(false);
-  const [iaProvedor, setIaProvedor] = useState("ollama");
-  const [iaChave, setIaChave] = useState("");
-  const [iaModelo, setIaModelo] = useState("");
-  const [iaEstilo, setIaEstilo] = useState("curto");
-  const [iaMaxTokens, setIaMaxTokens] = useState(1024);
-
   // UI
   const [salvando, setSalvando] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -84,10 +59,9 @@ export default function Configuracoes() {
 
   async function carregar() {
     try {
-      const [opcoesResp, configsResp, provedoresResp] = await Promise.all([
+      const [opcoesResp, configsResp] = await Promise.all([
         api.opcoes(),
         api.config(),
-        api.provedoresResumo().catch(() => ({ provedores: [], estilos: [] })),
       ]);
       setOpcoes(opcoesResp);
 
@@ -99,16 +73,6 @@ export default function Configuracoes() {
       } catch { /* mantém default */ }
       setPresetBlocos(configsResp.preset_blocos ?? "padrao");
       setDiarizarPorPadrao(configsResp.diarizar_por_padrao === "1");
-
-      setIaLigado(configsResp.resumo_ativo === "1");
-      setIaProvedor(configsResp.resumo_provedor ?? "ollama");
-      setIaChave(configsResp.resumo_chave_api ?? "");
-      setIaModelo(configsResp.resumo_modelo ?? "");
-      setIaEstilo(configsResp.resumo_estilo ?? "curto");
-      setIaMaxTokens(Number(configsResp.resumo_max_tokens ?? "1024"));
-
-      setProvedoresResumo(provedoresResp.provedores);
-      setEstilosResumo(provedoresResp.estilos);
     } catch (erro) {
       setMsg("Não consegui carregar as configurações. O servidor Python está rodando?");
     }
@@ -124,12 +88,6 @@ export default function Configuracoes() {
         formatos_padrao: JSON.stringify(formatosPadrao),
         preset_blocos: presetBlocos,
         diarizar_por_padrao: diarizarPorPadrao ? "1" : "0",
-        resumo_ativo: iaLigado ? "1" : "0",
-        resumo_provedor: iaProvedor,
-        resumo_chave_api: iaChave,
-        resumo_modelo: iaModelo,
-        resumo_estilo: iaEstilo,
-        resumo_max_tokens: String(iaMaxTokens),
       };
       await api.atualizarConfig(payload);
       setMsg("Configurações salvas.");
@@ -202,23 +160,6 @@ export default function Configuracoes() {
           <path d="m16.24 16.24 2.83 2.83" />
           <path d="M2 12h4" />
           <path d="M18 12h4" />
-        </svg>
-      ),
-    },
-    {
-      grupo: "PERSO.",
-      chave: "resumo",
-      rotulo: "Resumir",
-      icone: (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 3v3" />
-          <path d="M12 18v3" />
-          <path d="m6 6 2 2" />
-          <path d="m16 16 2 2" />
-          <path d="M21 12h-3" />
-          <path d="M6 12H3" />
-          <path d="m6 18 2-2" />
-          <path d="m16 8 2-2" />
         </svg>
       ),
     },
@@ -585,126 +526,6 @@ export default function Configuracoes() {
     );
   }
 
-  function renderResumo() {
-    const provedor = provedoresResumo.find((p) => p.chave === iaProvedor);
-    return (
-      <>
-        <h2 style={{ marginTop: 0 }}>Resumo por IA</h2>
-
-        <div className="alerta alerta-info" style={{ marginBottom: "var(--space-4)" }}>
-          <span className="icone">ℹ️</span>
-          <div>
-            <strong>Por padrão o resumo por IA está desligado.</strong> A
-            transcrição é 100% local. Ativar aqui faz o programa enviar o
-            texto transcrito para o provedor escolhido (saída opcional
-            indicada em <strong>Privacidade</strong>).
-          </div>
-        </div>
-
-        <div className="card blueprint elev-sm">
-          <Canto />
-          <div className="field" style={{ marginBottom: "var(--space-3)" }}>
-            <label>
-              <input
-                type="checkbox"
-                checked={iaLigado}
-                onChange={(e) => setIaLigado(e.target.checked)}
-                style={{ marginRight: 6 }}
-              />
-              Ativar resumo por IA
-            </label>
-          </div>
-
-          {iaLigado && (
-            <>
-              <div className="field" style={{ marginBottom: "var(--space-3)" }}>
-                <label>Provedor</label>
-                <select
-                  className="input"
-                  value={iaProvedor}
-                  onChange={(e) => {
-                    setIaProvedor(e.target.value);
-                    const novo = provedoresResumo.find((p) => p.chave === e.target.value);
-                    if (novo) setIaModelo(novo.modelo_padrao);
-                  }}
-                >
-                  {provedoresResumo.map((p) => (
-                    <option key={p.chave} value={p.chave}>{p.rotulo}</option>
-                  ))}
-                </select>
-                {provedor && (
-                  <div className="check-nota">
-                    {provedor.provedor === "anthropic"
-                      ? "API da Anthropic (formato próprio)."
-                      : "Compatível com a API OpenAI."}
-                    {provedor.precisa_chave && " Precisa de chave."}
-                  </div>
-                )}
-              </div>
-
-              <div className="field" style={{ marginBottom: "var(--space-3)" }}>
-                <label>
-                  Chave de API
-                  {!provedor?.precisa_chave && " (opcional para provedores locais)"}
-                </label>
-                <input
-                  className="input"
-                  type="password"
-                  value={iaChave}
-                  onChange={(e) => setIaChave(e.target.value)}
-                  placeholder={
-                    provedor?.precisa_chave
-                      ? "Cole sua chave aqui"
-                      : "Vazia se for local sem autenticação"
-                  }
-                />
-              </div>
-
-              <div className="field" style={{ marginBottom: "var(--space-3)" }}>
-                <label>Modelo</label>
-                <input
-                  className="input"
-                  value={iaModelo}
-                  onChange={(e) => setIaModelo(e.target.value)}
-                  placeholder={
-                    provedor?.modelo_padrao
-                      ? `Padrão: ${provedor.modelo_padrao}`
-                      : "Ex.: llama3.2, gpt-4o-mini"
-                  }
-                />
-              </div>
-
-              <div className="field" style={{ marginBottom: "var(--space-3)" }}>
-                <label>Estilo do resumo</label>
-                <select
-                  className="input"
-                  value={iaEstilo}
-                  onChange={(e) => setIaEstilo(e.target.value)}
-                >
-                  {estilosResumo.map((e) => (
-                    <option key={e.chave} value={e.chave}>{e.rotulo}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="field">
-                <label>Tamanho máximo da resposta: {iaMaxTokens} tokens</label>
-                <input
-                  type="range"
-                  min={128}
-                  max={4096}
-                  step={64}
-                  value={iaMaxTokens}
-                  onChange={(e) => setIaMaxTokens(Number(e.target.value))}
-                />
-              </div>
-            </>
-          )}
-        </div>
-      </>
-    );
-  }
-
   function renderAvancado() {
     return (
       <>
@@ -835,7 +656,6 @@ export default function Configuracoes() {
     transcricao: renderTranscricao(),
     modelos: renderModelos(),
     finetuning: renderFinetuning(),
-    resumo: renderResumo(),
     api: renderApi(),
     avancado: renderAvancado(),
     sobre: renderSobre(),
@@ -917,7 +737,7 @@ export default function Configuracoes() {
         <div style={{ padding: "var(--space-4) var(--space-5)", overflowY: "auto", maxHeight: "60vh" }}>
           {conteudo}
 
-          {(secao === "transcricao" || secao === "resumo") && (
+          {(secao === "transcricao") && (
             <div style={{ marginTop: "var(--space-4)" }}>
               <div className="acoes">
                 <button className="btn btn-primary blueprint" onClick={salvar} disabled={salvando}>

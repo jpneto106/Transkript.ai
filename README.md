@@ -39,6 +39,10 @@
 >
 > ### ➡️ **[Baixar a versão mais recente](https://github.com/jpneto106/Transkript.ai/releases/latest)**
 >
+> <sub>Todas as versões anteriores continuam disponíveis em
+> **[Releases](https://github.com/jpneto106/Transkript.ai/releases)**, e o que mudou
+> em cada uma está no **[CHANGELOG](CHANGELOG.md)**.</sub>
+>
 > <sub>O Windows pode mostrar um aviso de *"Editor desconhecido"* — o instalador não é
 > assinado digitalmente. Clique em **Mais informações → Executar assim mesmo**.</sub>
 

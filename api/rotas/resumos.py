@@ -28,7 +28,7 @@ def listar_provedores():
     """Devolve provedores e estilos para a tela de Resumir."""
     return {
         "provedores": provedores_disponiveis(),
-        "estilos": [{"chave": e.chave, "rotulo": e.rotulo} for e in ESTILOS],
+        "estilos": [{"chave": e.chave, "rotulo": e.rotulo, "instrucao": e.instrucao} for e in ESTILOS],
     }
 
 

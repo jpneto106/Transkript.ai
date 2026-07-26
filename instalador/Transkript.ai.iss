@@ -53,7 +53,10 @@ OutputBaseFilename={#MeuNome}-{#MinhaVersao}-instalador
 SetupIconFile=..\app.ico
 WizardStyle=modern
 
-Compression=lzma2/max
+; Compressão: `max` fazia sentido com 2,8 GB (35 min). Com os ~8 GB da v3 ela
+; passaria de uma hora para economizar pouco mais de 10% no download. `normal`
+; comprime quase tão bem em uma fração do tempo.
+Compression=lzma2/normal
 SolidCompression=yes
 
 ArchitecturesAllowed=x64compatible

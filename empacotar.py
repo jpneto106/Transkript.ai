@@ -153,6 +153,10 @@ def main() -> None:
                             help="Não inclui as DLLs da NVIDIA (versão só CPU).")
     analisador.add_argument("--rapido", action="store_true",
                             help="Reaproveita as compilações existentes.")
+    analisador.add_argument("--bootstrap", action="store_true",
+                            help="Produz o instalador bootstrap (só casca + launcher; "
+                                 "o resto baixa na primeira execução). É o par leve do "
+                                 "instalador completo, sem o conteúdo embutido.")
     argumentos = analisador.parse_args()
 
     if not (RAIZ / "frontend" / "dist" / "index.html").is_file():
@@ -175,11 +179,23 @@ def main() -> None:
 
     copiar(casca, SAIDA, "casca (janela)")
     copiar(RAIZ / "app.ico", SAIDA / "app.ico", "ícone")
-    copiar(servidor, SAIDA / "servidor", "servidor")
-    copiar(RAIZ / "frontend" / "dist", SAIDA / "frontend" / "dist", "interface")
-    copiar(RAIZ / "ferramentas" / "ffmpeg" / "bin",
-           SAIDA / "ferramentas" / "ffmpeg" / "bin", "ffmpeg")
-    copiar_modelo_de_vozes(SAIDA)
+
+    if argumentos.bootstrap:
+        # Modo bootstrap: só casca + launcher. O resto baixa do GitHub Releases
+        # na primeira execução, via `instalador/baixar_componentes.py` (invocado
+        # pelo launcher integrado na casca — Etapa 6).
+        copiar(RAIZ / "instalador" / "baixar_componentes.py",
+               SAIDA / "instalador" / "baixar_componentes.py",
+               "buscador de componentes (primeira execução)")
+        copiar(RAIZ / "instalador" / "ASSETS.md",
+               SAIDA / "instalador" / "ASSETS.md",
+               "convencao dos assets")
+    else:
+        copiar(servidor, SAIDA / "servidor", "servidor")
+        copiar(RAIZ / "frontend" / "dist", SAIDA / "frontend" / "dist", "interface")
+        copiar(RAIZ / "ferramentas" / "ffmpeg" / "bin",
+               SAIDA / "ferramentas" / "ffmpeg" / "bin", "ffmpeg")
+        copiar_modelo_de_vozes(SAIDA)
 
     if argumentos.sem_cuda:
         print("    aceleração NVIDIA: pulada (--sem-cuda)")
@@ -195,13 +211,16 @@ def main() -> None:
             print(f"    AVISO: {origem_cuda} não existe — saindo sem aceleração NVIDIA.")
 
     passo("Pronto")
+    if argumentos.bootstrap:
+        print(f"    MODO BOOTSTRAP: instalador fino. O restante baixa via baixar_componentes.py")
     for nome, caminho in (
         ("casca + runtime", SAIDA),
         ("servidor", SAIDA / "servidor"),
         ("ffmpeg", SAIDA / "ferramentas" / "ffmpeg"),
         ("cuda", SAIDA / "ferramentas" / "cuda"),
     ):
-        print(f"    {nome:<18} {megabytes(caminho):>6} MB")
+        if caminho.exists() or caminho.is_dir():
+            print(f"    {nome:<18} {megabytes(caminho):>6} MB")
     print(f"\n    Pasta final: {SAIDA}")
     print(f"    Para testar:  \"{SAIDA / 'Transkript.ai.exe'}\"")
 

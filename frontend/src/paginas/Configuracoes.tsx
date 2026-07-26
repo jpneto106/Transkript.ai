@@ -9,7 +9,6 @@ const Canto = () => (
 );
 
 interface ProvedorInfo { chave: string; rotulo: string; provedor: string; url_base_padrao: string; modelo_padrao: string; precisa_chave: boolean; }
-interface EstiloInfo { chave: string; rotulo: string; }
 
 type Secao =
   | "geral"
@@ -54,12 +53,10 @@ export default function Configuracoes() {
 
   // Resumo por IA
   const [provedoresResumo, setProvedoresResumo] = useState<ProvedorInfo[]>([]);
-  const [estilosResumo, setEstilosResumo] = useState<EstiloInfo[]>([]);
   const [iaLigado, setIaLigado] = useState(false);
   const [iaProvedor, setIaProvedor] = useState("ollama");
   const [iaChave, setIaChave] = useState("");
   const [iaModelo, setIaModelo] = useState("");
-  const [iaEstilo, setIaEstilo] = useState("curto");
   const [iaMaxTokens, setIaMaxTokens] = useState(1024);
   const [testando, setTestando] = useState(false);
   const [resultadoTeste, setResultadoTeste] = useState<string | null>(null);
@@ -91,12 +88,10 @@ export default function Configuracoes() {
       setDiarizarPorPadrao(configsResp.diarizar_por_padrao === "1");
 
       setProvedoresResumo(provedoresResp.provedores);
-      setEstilosResumo(provedoresResp.estilos);
       setIaLigado(configsResp.resumo_ativo === "1");
       setIaProvedor(configsResp.resumo_provedor ?? "ollama");
       setIaChave(configsResp.resumo_chave_api ?? "");
       setIaModelo(configsResp.resumo_modelo ?? "");
-      setIaEstilo(configsResp.resumo_estilo ?? "curto");
       setIaMaxTokens(Number(configsResp.resumo_max_tokens ?? "1024"));
     } catch (erro) {
       setMsg("Não consegui carregar as configurações. O servidor Python está rodando?");
@@ -117,7 +112,6 @@ export default function Configuracoes() {
         resumo_provedor: iaProvedor,
         resumo_chave_api: iaChave,
         resumo_modelo: iaModelo,
-        resumo_estilo: iaEstilo,
         resumo_max_tokens: String(iaMaxTokens),
       };
       await api.atualizarConfig(payload);
@@ -528,12 +522,6 @@ export default function Configuracoes() {
               <label>Modelo</label>
               <input className="input" value={iaModelo} onChange={(e) => setIaModelo(e.target.value)} placeholder={provedor?.modelo_padrao || "Ex.: gemma-4-e4b"} />
             </div>
-            <div className="field" style={{ marginBottom: "var(--space-3)" }}>
-              <label>Estilo</label>
-              <select className="input" value={iaEstilo} onChange={(e) => setIaEstilo(e.target.value)}>
-                {estilosResumo.map((e: EstiloInfo) => <option key={e.chave} value={e.chave}>{e.rotulo}</option>)}
-              </select>
-            </div>
             <div className="field">
               <label>Tamanho: {iaMaxTokens} tokens</label>
               <input type="range" min={128} max={4096} step={64} value={iaMaxTokens} onChange={(e) => setIaMaxTokens(Number(e.target.value))} />
@@ -546,7 +534,7 @@ export default function Configuracoes() {
                   setResultadoTeste(null);
                   try {
                     await api.testarConexaoResumo({
-                      config: { chave_provedor: iaProvedor, chave_api: iaChave, modelo: iaModelo, estilo: iaEstilo, max_tokens: iaMaxTokens }
+                      config: { chave_provedor: iaProvedor, chave_api: iaChave, modelo: iaModelo, estilo: "curto", max_tokens: iaMaxTokens }
                     });
                     setResultadoTeste("✅ Conectado com sucesso.");
                   } catch (e: any) {

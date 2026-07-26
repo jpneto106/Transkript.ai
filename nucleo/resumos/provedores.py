@@ -114,22 +114,22 @@ ESTILOS: list[EstiloResumo] = [
     EstiloResumo(
         chave="curto",
         rotulo="Resumo curto (1-2 parágrafos)",
-        instrucao="Em 1 ou 2 parágrafos, capture a ideia central e os pontos de virada.",
+        instrucao="Em 1 ou 2 parágrafos, capture a ideia central e os pontos de virada. Use **negrito** para termos-chave e separe seções com títulos `##`.",
     ),
     EstiloResumo(
         chave="topicos",
         rotulo="Tópicos (bullets)",
-        instrucao="Liste em bullets os principais pontos discutidos, na ordem em que aparecem.",
+        instrucao="Liste em bullets (`- `) os principais pontos discutidos, na ordem em que aparecem. Use `##` para agrupar por tema quando houver mais de 3 bullets sobre o mesmo assunto.",
     ),
     EstiloResumo(
         chave="frases_chave",
         rotulo="Frases-chave (citações curtas)",
-        instrucao="Selecione as frases mais importantes do texto, transcritas literalmente. Atribua a frase a quem fala, quando houver.",
+        instrucao="Selecione as frases mais importantes do texto, transcritas literalmente. Formate cada uma como citação em bloco (`>`). Atribua a frase a quem fala, quando houver (`**Nome:**`).",
     ),
     EstiloResumo(
         chave="executivo",
         rotulo="Resumo executivo",
-        instrucao="Tom profissional, audiência executiva. Máximo de 5 bullets. Inclua decisão recomendada se houver.",
+        instrucao="Tom profissional, audiência executiva. Use `##` para cabeçalhos. Máximo de 5 bullets. Inclua decisão recomendada se houver, em **negrito**.",
     ),
 ]
 

@@ -37,7 +37,9 @@ class ConfigResumo:
 #: para fins de rastreabilidade caso o usuário precise pedir suporte.
 SYSTEM_PROMPT_BASE = (
     "Você resume transcrições de vídeo/áudio no idioma {idioma}. "
-    "Devolva APENAS o resumo, sem introdução como 'Aqui vai o resumo'. "
+    "Formate a resposta em Markdown: use `##` para títulos, `**` para negrito, "
+    "`-` para bullets, `>` para citações. "
+    "Devolva APENAS o resumo formatado, sem introdução como 'Aqui vai o resumo'. "
     "Siga o estilo pedido. Se o texto não tiver conteúdo resgatável, "
     "devolva exatamente: (texto insuficiente para resumir)."
 )
@@ -59,7 +61,12 @@ def _montar_prompts(config: ConfigResumo, texto: str) -> tuple[str, str]:
     from .provedores import estilo_por_chave
     estilo = estilo_por_chave(config.estilo)
     if estilo is None:
-        raise RuntimeError(f"Estilo de resumo desconhecido: {config.estilo!r}")
+        # Se não é um estilo conhecido, usa o valor como instrução direta
+        # (modo "personalizado" da interface).
+        return _prompt_sistema(config), (
+            f"Siga estas instruções exatamente:\n\n{config.estilo}\n\n"
+            f"Transcrição a resumir:\n\n{texto}"
+        )
     return _prompt_sistema(config), _prompt_usuario(texto, estilo)
 
 

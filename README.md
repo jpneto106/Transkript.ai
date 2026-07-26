@@ -97,6 +97,33 @@ Python, Node.js, ffmpeg e as bibliotecas CUDA já vão dentro do pacote.
 - **ffmpeg** no sistema (ex.: `winget install Gyan.FFmpeg`) ou embutido em `ferramentas/ffmpeg`.
 - **.NET SDK 10** e **Inno Setup 6**, apenas se você for gerar o instalador.
 
+### Modelo de diarização (identificação de falantes)
+
+O `pyannote/speaker-diarization-community-1` (~32 MB) é **gated** no
+Hugging Face — o instalador da v3 o embute em `modelos/hub/`, e o
+`empacotar.py` faz o mesmo. No **dev mode** (você rodando `setup_dev.bat`),
+o modelo não vem no repo (está em `modelos/`, que é gitignored).
+
+Três caminhos para resolver:
+
+- **Mais fácil (recomendado):** copie o modelo do seu v3 instalado.
+  Se você já tem a v3 funcionando, o modelo está em
+  `<raiz-do-v3>/modelos/hub/models--pyannote--speaker-diarization-community-1/`.
+  Copie essa pasta inteira para
+  `modelos/hub/models--pyannote--speaker-diarization-community-1/` na
+  raiz deste projeto.
+- **Sem v3:** aceite os termos do modelo em
+  <https://huggingface.co/pyannote/speaker-diarization-community-1> e
+  (opcional) crie um token em <https://huggingface.co/settings/tokens>.
+  Defina `HF_TOKEN=hf_…` no ambiente. Na primeira vez que você
+  transcrever com "Identificar falantes" marcado, o programa baixa
+  o modelo sozinho.
+- **Sem internet / sem conta:** peça a um amigo que tenha o
+  modelo para te passar os 32 MB.
+
+Sem o modelo, o programa **não quebra** — só a opção de
+identificar falantes fica desabilitada.
+
 ---
 
 ## 🚀 Instalação (a partir do código)

@@ -79,9 +79,51 @@ def biblioteca_instalada() -> bool:
         return False
 
 
+def baixar_modelo() -> Path | None:
+    """Baixa o modelo de diarização do Hugging Face se ainda não estiver em disco.
+
+    Usa ``huggingface_hub.snapshot_download`` para colocar os arquivos no
+    diretório padrão do HF Hub (``<raiz>/modelos/hub/...``). O modelo
+    ``pyannote/speaker-diarization-community-1`` é o pipeline aberto do
+    pyannote (não-gated), mas seus sub-modelos (segmentação, embedding)
+    podem pedir login do Hugging Face em alguns deles — qualquer erro é
+    propagado com mensagem clara.
+
+    Devolve o caminho do ``config.yaml`` baixado, ou ``None`` se já existia
+    antes (o que também é sucesso: nada a fazer).
+    """
+    if modelo_baixado():
+        return caminho_local_do_modelo()
+
+    from huggingface_hub import snapshot_download
+
+    cache = RAIZ_APP / "modelos"
+    cache.mkdir(parents=True, exist_ok=True)
+
+    try:
+        snapshot_download(
+            repo_id=REPO_DIARIZACAO,
+            cache_dir=str(cache),
+            allow_patterns=["*.yaml", "pytorch_model.bin", "config.yaml"],
+        )
+    except Exception as erro:
+        raise RuntimeError(
+            "Não consegui baixar o modelo de identificação de vozes. "
+            "Ele vive em huggingface.co/pyannote/speaker-diarization-community-1. "
+            f"Detalhe: {erro!r}"
+        ) from erro
+
+    return caminho_local_do_modelo()
+
+
 def diarizacao_disponivel() -> bool:
-    """Só oferecemos o recurso quando as duas peças existem."""
-    return biblioteca_instalada() and modelo_baixado()
+    """True se a biblioteca está instalada.
+
+    O modelo é baixado sob demanda em ``carregar_pipeline`` — o usuário não
+    precisa de um instalador para usá-lo. Se quiser conferir o estado do
+    modelo em disco, chame ``modelo_baixado()`` diretamente.
+    """
+    return biblioteca_instalada()
 
 
 def caminho_local_do_modelo() -> Path | None:
@@ -106,11 +148,19 @@ def caminho_local_do_modelo() -> Path | None:
 
 
 def carregar_pipeline(dispositivo: str):
-    """Carrega o modelo de identificação de vozes. Reutilize — é caro de criar."""
+    """Carrega o modelo de identificação de vozes. Reutilize — é caro de criar.
+
+    Se o modelo ainda não estiver em disco, baixa agora (com rede). Em rede
+    sem acesso ao Hugging Face, ``baixar_modelo`` levanta ``RuntimeError``
+    com instrução clara.
+    """
     config = caminho_local_do_modelo()
     if config is None:
+        config = baixar_modelo()
+    if config is None:
         raise RuntimeError(
-            "O modelo de identificação de vozes não está instalado neste computador."
+            "O modelo de identificação de vozes não está instalado neste computador "
+            "e não foi possível baixá-lo agora."
         )
 
     import torch

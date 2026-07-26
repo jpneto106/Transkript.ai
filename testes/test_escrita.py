@@ -61,3 +61,53 @@ def test_gera_todos_os_formatos(tmp_path):
     gerados = escrever_saidas(res, tmp_path / "out", ["txt", "srt", "vtt", "json"])
     extensoes = sorted(g.suffix for g in gerados)
     assert extensoes == [".json", ".srt", ".txt", ".vtt"]
+
+
+def test_gera_html(tmp_path):
+    """HTML sai sempre que pedido; independe de libs externas."""
+    res = _resultado(tmp_path)
+    gerados = escrever_saidas(res, tmp_path / "out", ["html"])
+    assert len(gerados) == 1
+    assert gerados[0].suffix == ".html"
+    corpo = gerados[0].read_text(encoding="utf-8")
+    assert "<!DOCTYPE html>" in corpo
+    assert "Primeira linha." in corpo
+    assert "Segunda linha." in corpo
+    assert 'lang="pt-BR"' in corpo
+
+
+def _resultado_com_falantes(tmp_path):
+    from nucleo.formatacao import ResultadoTranscricao, Segmento
+    return ResultadoTranscricao(
+        arquivo=tmp_path / "entrevista.mp4",
+        idioma="pt",
+        probabilidade_idioma=0.99,
+        duracao=6.0,
+        segmentos=[
+            Segmento(0.0, 2.0, "Bom dia.", falante="FALANTE_01"),
+            Segmento(2.0, 4.0, "Como vai?", falante="FALANTE_01"),
+            Segmento(4.0, 6.0, "Tudo bem.", falante="FALANTE_02"),
+        ],
+        falantes=["FALANTE_01", "FALANTE_02"],
+    )
+
+
+def test_html_com_falantes(tmp_path):
+    """Quando há diarização, o HTML marca cada fala com nome + carimbo de tempo."""
+    res = _resultado_com_falantes(tmp_path)
+    gerados = escrever_saidas(res, tmp_path / "out", ["html"])
+    corpo = gerados[0].read_text(encoding="utf-8")
+    assert "Falante 1" in corpo
+    assert "Falante 2" in corpo
+    assert "<h2>Falantes</h2>" in corpo
+
+
+def test_gera_html_junto_com_txt(tmp_path):
+    """Pedir HTML junto com TXT não muda o TXT e ainda gera o HTML."""
+    res = _resultado(tmp_path)
+    gerados = escrever_saidas(res, tmp_path / "out", ["txt", "html"])
+    extensoes = sorted(g.suffix for g in gerados)
+    assert ".html" in extensoes
+    assert ".txt" in extensoes
+    txt_gerado = [g for g in gerados if g.suffix == ".txt"][0]
+    assert txt_gerado.read_text(encoding="utf-8") == "Primeira linha.\nSegunda linha.\n"

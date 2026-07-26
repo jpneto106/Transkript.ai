@@ -3,20 +3,22 @@
 Quem usa só o Whisper (CPU ou GPU) não precisa instalar nada daqui.
 
 Quem usa **identificação de falantes (diarização)**, sim. O pyannote.audio
-traz o PyTorch junto (~2,5 GB), mas só baixa o que for usar. O modelo
-(``pyannote/speaker-diarization-community-1``, 32 MB) é baixado uma única
-vez e guardado em ``<app>/modelos/hub/`` — sem precisar de conta no
-Hugging Face.
+traz o PyTorch junto (~2,5 GB). Instale com GPU NVIDIA para ter velocidade real
+(sem GPU a diarização leva 5-10 minutos mesmo em áudios curtos):
 
-Instale com:
+    pip install pyannote.audio>=3.1
+    pip install --upgrade --force-reinstall torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 
-    venv\\Scripts\\pip.exe install -r requirements-extras.txt
+Sem GPU NVIDIA:
 
-Para desinstalar, basta remover o pacote; o modelo em ``modelos/`` fica
-como resíduo (pode apagar a pasta para liberar 32 MB).
+    pip install pyannote.audio>=3.1
+
+O modelo (``pyannote/speaker-diarization-community-1``, 32 MB) é baixado
+uma única vez e guardado em ``<app>/modelos/hub/`` — sem precisar de conta
+no Hugging Face.
 """
 
-# Pacote de diarização: pyannote/WhisperX. O único ponto de entrada é
-# ``nucleo.diarizacao`` — o resto do programa nem importa este pacote.
-# ``pyannote.audio`` puxa torch e torchaudio como dependências.
 pyannote.audio>=3.1
+# PyTorch CUDA: se você tem GPU NVIDIA, rode o comando acima DEPOIS de
+# pip install -r requirements-extras.txt (o pip puxa PyTorch CPU por padrão).
+# torch>=2.6  -- explicitado no comando acima com --index-url cu124, não aqui.

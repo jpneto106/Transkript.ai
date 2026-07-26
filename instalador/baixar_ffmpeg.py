@@ -30,7 +30,7 @@ FFMPEG_URL = (
     "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/"
     "ffmpeg-master-latest-win64-lgpl-shared.zip"
 )
-FFMPEG_SHA256 = "f3622132c3121436a7c33921b9c5c214f69d4b70d2b12fe7e2568e947a4f7413"
+FFMPEG_SHA256 = "326b627e9e7267fd2d987f3455b1d0f5a0a5e116841e27db707ec9a04d6b4873"
 
 NOME_ARQUIVO = "ffmpeg.exe"
 NOME_FFPROBE = "ffprobe.exe"

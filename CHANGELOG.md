@@ -10,7 +10,7 @@ o terceiro em correções.
 
 ---
 
-## [4.0.0](https://github.com/jpneto106/Transkript.ai/releases/tag/v4.0.0) — em breve
+## [4.0.0](https://github.com/jpneto106/Transkript.ai/releases/tag/v4.0.0) — 27/07/2026
 
 Trilha `v4-leve` da `v3-melhorias`. Reduz o instalador em ~30% em relação à v3
 e traz a maioria das funções de IA e presets do Vibe, sem mexer na

@@ -60,9 +60,13 @@ Compression=lzma2/normal
 SolidCompression=yes
 
 ; O GitHub recusa anexos acima de 2 GB por arquivo, e o pacote da v3 passa
-; disso por causa do PyTorch. O instalador sai então em duas partes: o .exe e
-; um arquivo .bin ao lado. Basta manter os dois na mesma pasta e rodar o .exe —
-; ele encontra o resto sozinho.
+; disso por causa do PyTorch. O instalador sai então em partes: o .exe mais um
+; ou mais arquivos .bin ao lado. Basta manter todos na mesma pasta e rodar o
+; .exe — ele encontra o resto sozinho.
+;
+; AO PUBLICAR: confira quantos .bin o Inno gerou em dist/ e liste TODOS nas
+; notas do release. A v3.0.0 saiu com dois (-1.bin e -2.bin), mas as instruções
+; citavam só um — quem as seguia baixava 2 de 3 arquivos e a instalação falhava.
 DiskSpanning=yes
 DiskSliceSize=1900000000
 

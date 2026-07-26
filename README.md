@@ -26,12 +26,13 @@
 
 > ## 💾 Instalar no Windows
 >
-> **Baixe o instalador, dê dois cliques e pronto.** Não precisa ter Python, Node.js
-> nem ffmpeg na máquina — vem tudo dentro do pacote.
+> **Baixe os arquivos do instalador, deixe todos na mesma pasta e dê dois cliques
+> no `.exe`.** Não precisa ter Python, Node.js nem ffmpeg na máquina — vem tudo
+> dentro do pacote.
 >
 > | | |
 > |---|---|
-> | **Arquivo** | `Transkript.ai-3.0.0-instalador.exe` |
+> | **Arquivos** | `Transkript.ai-3.0.0-instalador.exe` mais as partes `-1.bin` e `-2.bin` — os três na mesma pasta (~2,3 GB no total) |
 > | **Sistema** | Windows 10 ou 11 (64 bits) |
 > | **Administrador** | Não pede senha — instala na sua pasta de usuário |
 > | **Placa de vídeo** | NVIDIA acelera bastante, mas é opcional (sem ela, roda no processador) |

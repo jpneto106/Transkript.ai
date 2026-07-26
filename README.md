@@ -14,6 +14,13 @@
   <img alt="Licença: MIT" src="https://img.shields.io/badge/licen%C3%A7a-MIT-blue">
   <img alt="Python" src="https://img.shields.io/badge/Python-3.13-informational">
   <img alt="Interface" src="https://img.shields.io/badge/interface-React%20%2B%20FastAPI-success">
+  <img alt="DeepSeek" src="https://img.shields.io/badge/v4%20built%20com-DeepSeek%20V4%20Pro-4B32CD">
+</p>
+
+<p align="center">
+  <sub>🚀 A <b>versão 4</b> deste programa foi desenvolvida com <b>DeepSeek V4 Pro</b><br>
+  atuando como par de programação (debug, refatoração, testes, documentação).<br>
+  O autor humano (<b>JP.Neto</b>) tomou todas as decisões de arquitetura e design.</sub>
 </p>
 
 <p align="center">

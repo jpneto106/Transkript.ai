@@ -153,6 +153,12 @@ def carregar_pipeline(dispositivo: str):
     Se o modelo ainda não estiver em disco, baixa agora (com rede). Em rede
     sem acesso ao Hugging Face, ``baixar_modelo`` levanta ``RuntimeError``
     com instrução clara.
+
+    Se o dispositivo pedido for ``"cuda"`` mas o PyTorch instalado não tiver
+    suporte a CUDA (PyTorch CPU-only), cai automaticamente para ``"cpu"``.
+    O Whisper roda acelerado via ctranslate2, que tem CUDA à parte; o
+    pyannote depende do PyTorch, e essa queda evita que a interface mostre
+    erros silenciosos.
     """
     config = caminho_local_do_modelo()
     if config is None:
@@ -164,12 +170,17 @@ def carregar_pipeline(dispositivo: str):
         )
 
     import torch
+
+    dispositivo_real = dispositivo
+    if dispositivo in ("cuda", "auto") and not torch.cuda.is_available():
+        dispositivo_real = "cpu"
+
     from pyannote.audio import Pipeline
 
     pipeline = Pipeline.from_pretrained(str(config))
     if pipeline is None:
         raise RuntimeError(f"Não consegui carregar o modelo de vozes de {config}")
-    return pipeline.to(torch.device(dispositivo))
+    return pipeline.to(torch.device(dispositivo_real))
 
 
 def diarizar_arquivo(

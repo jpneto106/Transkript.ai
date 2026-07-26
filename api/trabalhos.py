@@ -341,7 +341,7 @@ def _processar_job(id_: str, parametros: dict[str, Any]) -> None:
                 "progresso_segundos": resultado.duracao,
                 "arquivos_gerados": [str(g) for g in gerados],
                 "atualizado_em": _agora(),
-            },
+                **({"mensagem_erro": aviso} if aviso else {}),
         )
         _atualizar_estado(
             id_,

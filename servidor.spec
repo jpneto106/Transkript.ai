@@ -93,6 +93,19 @@ a = Analysis(  # noqa: F821
     optimize=0,
 )
 
+# O PyTorch guarda, junto das DLLs, bibliotecas de LIGAÇÃO usadas só por quem
+# compila código em C++ — nunca carregadas em tempo de execução. Só o dnnl.lib
+# tem 2,2 GB. Sem esta limpeza, o instalador carrega ~2,5 GB de peso morto.
+_EXTENSOES_DE_COMPILACAO = (".lib", ".a", ".exp", ".pdb")
+
+
+def _sem_arquivos_de_compilacao(itens):
+    return [i for i in itens if not str(i[0]).lower().endswith(_EXTENSOES_DE_COMPILACAO)]
+
+
+a.datas = _sem_arquivos_de_compilacao(a.datas)
+a.binaries = _sem_arquivos_de_compilacao(a.binaries)
+
 pyz = PYZ(a.pure)  # noqa: F821
 
 exe = EXE(  # noqa: F821

@@ -330,19 +330,19 @@ def _processar_job(id_: str, parametros: dict[str, Any]) -> None:
         # 5) Gravar arquivos de saída.
         gerados = escrever_saidas(resultado, PASTA_SAIDA_APP, parametros["formatos"])
 
-        bd.atualizar_transcricao(
-            id_,
-            {
-                "status": CONCLUIDO,
-                "idioma_detectado": resultado.idioma,
-                "probabilidade_idioma": resultado.probabilidade_idioma,
-                "duracao_audio": resultado.duracao,
-                "tempo_processamento": resultado.tempo_processamento,
-                "progresso_segundos": resultado.duracao,
-                "arquivos_gerados": [str(g) for g in gerados],
-                "atualizado_em": _agora(),
-                **({"mensagem_erro": aviso} if aviso else {}),
-        )
+        dados_finais = {
+            "status": CONCLUIDO,
+            "idioma_detectado": resultado.idioma,
+            "probabilidade_idioma": resultado.probabilidade_idioma,
+            "duracao_audio": resultado.duracao,
+            "tempo_processamento": resultado.tempo_processamento,
+            "progresso_segundos": resultado.duracao,
+            "arquivos_gerados": [str(g) for g in gerados],
+            "atualizado_em": _agora(),
+        }
+        if aviso:
+            dados_finais["mensagem_erro"] = aviso
+        bd.atualizar_transcricao(id_, dados_finais)
         _atualizar_estado(
             id_,
             status=CONCLUIDO,

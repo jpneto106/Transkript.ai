@@ -19,6 +19,9 @@ const FORMATOS = [
   { key: "srt", label: "SRT (legenda)" },
   { key: "vtt", label: "VTT (legenda web)" },
   { key: "json", label: "JSON (dados)" },
+  { key: "html", label: "HTML (página imprimível)" },
+  { key: "docx", label: "DOCX (Word)", requer: "python-docx" },
+  { key: "pdf", label: "PDF", requer: "fpdf2" },
 ];
 
 const Canto = () => (
@@ -564,6 +567,7 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
                 type="button"
                 className={`fmt-tag tag ${formatos.includes(f.key) ? "tag-accent" : "tag-outline"}`}
                 onClick={() => escolherFormato(f.key)}
+                title={f.requer ? `Requer o pacote ${f.requer} instalado` : undefined}
               >
                 {f.label}
               </button>

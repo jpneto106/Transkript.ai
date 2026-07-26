@@ -21,3 +21,7 @@ dist/
 frontend/*.tsbuildinfo
 frontend/vite.config.js
 frontend/vite.config.d.ts
+
+# Cache do instalador/baixar_ffmpeg.py (zip do ffmpeg LGPL para não
+# baixar de novo entre empacotamentos).
+instalador/_cache/

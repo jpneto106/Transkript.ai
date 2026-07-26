@@ -69,7 +69,27 @@ def repositorio_do_modelo(nome: str) -> str:
     return par[1]
 
 
-FORMATOS_DISPONIVEIS = ["txt", "srt", "vtt", "json"]
+FORMATOS_DISPONIVEIS = ["txt", "srt", "vtt", "json", "html", "docx", "pdf"]
+
+
+def formato_disponivel(nome: str) -> bool:
+    """Se o formato pode ser gerado nesta build (HTML sempre; DOCX/PDF pedem libs)."""
+    if nome in {"txt", "srt", "vtt", "json", "html"}:
+        return True
+    if nome == "docx":
+        try:
+            import docx  # noqa: F401
+            return True
+        except ImportError:
+            return False
+    if nome == "pdf":
+        try:
+            import fpdf  # noqa: F401
+            return True
+        except ImportError:
+            return False
+    return False
+
 
 PASTA_ENTRADA_PADRAO = Path("entrada")
 PASTA_SAIDA_PADRAO = "saida"

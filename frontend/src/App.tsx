@@ -5,8 +5,10 @@ import NovaTranscricao from "./paginas/NovaTranscricao";
 import Historico from "./paginas/Historico";
 import Modelos from "./paginas/Modelos";
 import Dicionarios from "./paginas/Dicionarios";
+import Resumir from "./paginas/Resumir";
+import Configuracoes from "./paginas/Configuracoes";
 
-type Aba = "nova" | "historico" | "modelos" | "dicionarios";
+type Aba = "nova" | "historico" | "modelos" | "dicionarios" | "resumir" | "configuracoes";
 type Tema = "claro" | "escuro";
 
 function usarTema(): [Tema, () => void] {
@@ -130,6 +132,33 @@ export default function App() {
           >
             Dicionários
           </ItemNav>
+          <ItemNav
+            ativo={aba === "resumir"}
+            onClick={() => irPara("resumir")}
+            icone={
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9.5 14.5 3.5 8.5" />
+                <path d="m14.5 9.5 6.5 6" />
+                <path d="M8.5 9.5l-5 5" />
+                <path d="m15.5 14.5 5-5" />
+                <path d="m3 3 18 18" />
+              </svg>
+            }
+          >
+            Resumir com IA
+          </ItemNav>
+          <ItemNav
+            ativo={aba === "configuracoes"}
+            onClick={() => irPara("configuracoes")}
+            icone={
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            }
+          >
+            Configurações
+          </ItemNav>
         </nav>
 
         <div className="barra-rodape">
@@ -179,6 +208,16 @@ export default function App() {
           {visitadas.has("dicionarios") && (
             <Painel ativo={aba === "dicionarios"}>
               <Dicionarios />
+            </Painel>
+          )}
+          {visitadas.has("resumir") && (
+            <Painel ativo={aba === "resumir"}>
+              <Resumir />
+            </Painel>
+          )}
+          {visitadas.has("configuracoes") && (
+            <Painel ativo={aba === "configuracoes"}>
+              <Configuracoes />
             </Painel>
           )}
         </div>

@@ -7,3 +7,8 @@ requests>=2.31
 python-multipart>=0.0.9
 # pywebview não é mais usado (a interface abre em janela do Edge --app), mas pode
 # ficar instalado sem problema.
+# Opcionais para os formatos de saída extras (v4-leve):
+#   python-docx: gera .docx (Word). Sem ele, pedir 'docx' em escrever_saidas levanta erro.
+#   fpdf2:       gera .pdf. Sem ele, idem.
+python-docx>=1.1.0
+fpdf2>=2.7.9

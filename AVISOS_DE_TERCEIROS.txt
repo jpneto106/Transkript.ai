@@ -1,0 +1,90 @@
+AVISOS DE TERCEIROS — Transkript.ai v4
+=====================================
+
+O Transkript.ai redistribui, junto do programa, binários e modelos de terceiros.
+Este arquivo resume, em linguagem simples, o que cada peça é, sob que licença
+chega até você e onde obter o código-fonte quando a licença o exige.
+
+A versão completa e oficial de cada licença está nos links indicados; este resumo
+não substitui o texto legal.
+
+------------------------------------------------------------------------
+1. FFmpeg — usado para ler a duração e converter o áudio para PCM
+   mono 16 kHz, dentro de <app>/ferramentas/ffmpeg/bin/.
+------------------------------------------------------------------------
+   Licença: LGPL 2.1 ou superior, com partes em GPL dependendo do build.
+   Origem : build não-oficial mantida por BtbN
+            (https://github.com/BtbN/FFmpeg-Builds/releases/tag/latest).
+   Versão : win64-lgpl-shared (LGPL apenas, sem codecs GPL).
+   Função : apenas decodificação e remux; não usamos codecs de vídeo.
+   Fonte  : https://ffmpeg.org/download.html
+   Nota   : como executamos o ffmpeg como processo separado via subprocess,
+            isto é apenas agregação — o Transkript.ai continua sendo MIT.
+
+------------------------------------------------------------------------
+2. Faster-Whisper — motor padrão de transcrição (Whisper da OpenAI)
+------------------------------------------------------------------------
+   Licença: MIT
+   Origem : https://github.com/Systran/faster-whisper
+   Modelo : OpenAI Whisper, OpenRAIL-M (modelos em código aberto).
+            https://github.com/openai/whisper
+
+------------------------------------------------------------------------
+3. PyTorch + PyAnnote.audio — identificação de falantes (diarização)
+------------------------------------------------------------------------
+   Licença: BSD-3 (PyTorch) e MIT (PyAnnote).
+   Origem : https://pytorch.org e https://github.com/pyannote/pyannote-audio
+   Modelo : pyannote/speaker-diarization-community-1 (~32 MB embutido).
+   Nota   : o modelo segue as condições do repositório original; o Transkript.ai
+            redistribui o modelo junto do app para o usuário não precisar de
+            conta no Hugging Face.
+
+------------------------------------------------------------------------
+4. NVIDIA NeMo (Parakeet / Canary) — segundo motor de transcrição
+------------------------------------------------------------------------
+   Licença: Apache 2.0 (NeMo) e CC-BY-4.0 (modelos Parakeet/Canary da NVIDIA).
+   Origem : https://github.com/NVIDIA/NeMo
+   Modelos: convertidos para ONNX por istupakov em
+            https://huggingface.co/istupakov (mesma licença aberta do original).
+   Atribuição obrigatória:
+            "Portions of this research project used the NVIDIA NeMo Framework
+             and the Parakeet / Canary model checkpoints, both released under
+             their respective open licenses."
+
+------------------------------------------------------------------------
+5. NVIDIA cuBLAS + cuDNN — aceleração por GPU (CUDA)
+------------------------------------------------------------------------
+   Licença: CC-BY-4.0 para as bibliotecas redistribuídas.
+   Origem : https://developer.nvidia.com/cuda-toolkit
+   Uso    : apenas em máquinas com GPU NVIDIA; distribuído em
+            <app>/ferramentas/cuda/ e carregado dinamicamente.
+   Atribuição obrigatória:
+            "This software includes components distributed by NVIDIA
+             Corporation under the Creative Commons Attribution 4.0 license."
+
+------------------------------------------------------------------------
+6. yt-dlp — baixar áudio/vídeo de links (YouTube etc.)
+------------------------------------------------------------------------
+   Licença: Unlicense (domínio público)
+   Origem : https://github.com/yt-dlp/yt-dlp
+
+------------------------------------------------------------------------
+7. Microsoft Edge WebView2 — motor de renderização da interface
+------------------------------------------------------------------------
+   Licença: EULA proprietária da Microsoft (já vem no Windows 10/11).
+   Origem : componente do sistema operacional Windows.
+
+------------------------------------------------------------------------
+8. Pacote Python (FastAPI, Uvicorn, NumPy, etc.) e Node.js (Vite, React)
+------------------------------------------------------------------------
+   Licenças: MIT (FastAPI, Uvicorn, React, Vite), BSD (NumPy).
+   Documentação completa em `requirements.txt` e `requirements-api.txt`.
+
+------------------------------------------------------------------------
+Onde obter o código-fonte
+-------------------------
+Quando a licença exige oferecer o código (LGPL, GPL, CC-BY), os links acima
+indicam o repositório original. Em caso de dúvida ou dificuldade de acesso,
+escreva para o mantenedor do Transkript.ai (JP.Neto) pelo GitHub.
+
+Última atualização: v4.0.0 (branch v4-leve, julho/2026).

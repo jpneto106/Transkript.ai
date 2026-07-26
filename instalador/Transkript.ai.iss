@@ -18,7 +18,7 @@
 ; ============================================================================
 
 #define MeuNome        "Transkript.ai"
-#define MinhaVersao    "3.0.0"
+#define MinhaVersao    "4.0.0"
 #define MeuAutor       "JP.Neto"
 #define MeuSite        "https://github.com/jpneto106/Transkript.ai"
 #define MeuExecutavel  "Transkript.ai.exe"

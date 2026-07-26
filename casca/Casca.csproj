@@ -25,8 +25,8 @@
 
     <Product>Transkript.ai</Product>
     <Company>JP.Neto</Company>
-    <AssemblyVersion>3.0.0.0</AssemblyVersion>
-    <FileVersion>3.0.0.0</FileVersion>
+    <AssemblyVersion>4.0.0.0</AssemblyVersion>
+    <FileVersion>4.0.0.0</FileVersion>
 
     <!-- Só português: evita dezenas de pastas de tradução do WebView2 na saída. -->
     <SatelliteResourceLanguages>pt-BR</SatelliteResourceLanguages>
@@ -37,6 +37,20 @@
       para o log de compilação ficar legível.
     -->
     <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
+
+    <!--
+      Casca ainda compila com 111 MB no .NET 10 porque Windows Forms + trim
+      completo bate em NETSDK1175. Marcamos a propriedade como experimental
+      e desligamos o que dá pra desligar sem refatorar a casca: o resto da
+      redução virá na Etapa 3 do plano (reescrita opcional em Rust/Win32).
+
+      O ganho aqui é modesto mas de risco zero: tirar globalization (o
+      programa já é pt-BR fixo via `SatelliteResourceLanguages`) e stack
+      traces ricos (o usuário final não vê a profundidade do .NET) costuma
+      economizar 10–15 MB sem mudar o comportamento visível.
+    -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <NoWarn>$(NoWarn);IL2026;IL3050;NETSDK1130</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

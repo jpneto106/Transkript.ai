@@ -10,6 +10,68 @@ o terceiro em correções.
 
 ---
 
+## [4.0.0-alpha.1](https://github.com/jpneto106/Transkript.ai/tree/v4-leve) — em desenvolvimento
+
+Trilha `v4-leve` derivada da `v3-melhorias`. A versão tem dois eixos de trabalho
+— **enxugar o instalador** para chegar perto do tamanho do Vibe sem perder
+recursos, e **portar features do Vibe** (HTML, presets de legenda para reels,
+DOCX, PDF, resumo por IA). Esta primeira alpha só entrega o primeiro eixo,
+fase 0 do plano (`ol-um-outro-agente-graceful-oasis.md`).
+
+### Mudanças já aplicadas (fase 0)
+
+- **`servidor.spec`: Pillow (PIL) sai do pacote empacotado.** Nenhuma parte do
+  projeto importa `PIL` diretamente, mas a biblioteca chegava ao bundle por
+  arraste transitivo. Tirar ela economiza ~13 MB do instalador.
+- **`ffmpeg`: troca do build GPL para um build LGPL-only** (BtbN
+  / FFmpeg-Builds, asset `ffmpeg-master-latest-win64-lgpl-shared.zip`).
+  O hash esperado está fixado em `instalador/FFMPEG_BUILDINFO.txt` e é
+  conferido a cada download por `instalador/baixar_ffmpeg.py`. O
+  `empacotar.py` chama o baixador automaticamente quando os binários
+  ainda não estão em `ferramentas/ffmpeg/bin/`.
+- **`AVISOS_DE_TERCEIROS.txt`** adicionado na raiz, listando licenças de
+  ffmpeg (LGPL), CUDA (CC-BY-4.0), Whisper/Parakeet/Canary/pyannote e os
+  binários do WebView2, com links de origem para quem quiser conferir.
+- **README** ganhou a seção "📜 Avisos de terceiros" com as atribuições
+  obrigatórias resumidas.
+- **Casca (`.csproj`)**: `InvariantGlobalization=true` para reforçar que o
+  programa é pt-BR fixo (já tínhamos `SatelliteResourceLanguages=pt-BR`;
+  globalization desligada por completo tira ~10–15 MB do runtime do .NET).
+  Bump da `AssemblyVersion` para `4.0.0.0`.
+
+### O que NÃO mudou (ainda)
+
+- A interface do Transkript.ai (coluna lateral, tema claro/escuro, as quatro
+  abas) **fica intocada** — é o que diferencia este projeto do Vibe e
+  continua sendo o nosso padrão.
+- Dicionários de termos, histórico SQLite, controle de blocos de legenda,
+  dois motores de transcrição (Whisper + Parakeet/Canary).
+- Nenhuma `ferramenta/cuda/` foi tocada. As DLLs da NVIDIA continuam
+  indo para o instalador; passam a ser download opcional quando o motor
+  Sona entrar em cena (Etapas 2 e 4 do plano).
+
+### O que está barrado e por quê
+
+- **Trimming completo do .NET na casca**: o .NET 10 ainda não suporta
+  Windows Forms + trim (NETSDK1175). A redução de ~111 MB para ~40 MB que
+  o plano previa para esta fase só virá com a reescrita em Rust/Win32
+  prevista na Etapa 3 do plano, ou substituindo WinForms por WPF/Avalonia
+  em uma versão futura.
+
+### Próximas fases (do plano)
+
+| Etapa | O que | Status |
+|---|---|---|
+| 1 | `nucleo/fatiamento.py` (VAD do Vibe) | não começou |
+| 2 | Spike do motor Sona — **portão de decisão** | não começou |
+| 3 | Reescrita da casca em Rust/Win32 (opcional) | não começou |
+| 4 | Sona como motor, CUDA vira download opcional | depende de 2 |
+| 5 | Podar `servidor.spec` (sai `av`, `ctranslate2`, `onnxruntime`, `tokenizers`, `faster_whisper`) | depende de 4 |
+| 6 | Instalador bootstrapper (baixa o que falta dos Releases do GitHub) | depende de 3–5 |
+| 7 | HTML, DOCX, PDF, presets de reel, resumo por IA (Ollama local + Claude/OpenAI na nuvem) | não começou |
+
+---
+
 ## [3.0.0](https://github.com/jpneto106/Transkript.ai/releases/tag/v3.0.0) — 26/07/2026
 
 Identificação de falantes e um segundo motor de transcrição.

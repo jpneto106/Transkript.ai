@@ -20,8 +20,6 @@ Duas decisões de projeto importantes:
 
 from __future__ import annotations
 
-import os
-from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -68,12 +66,16 @@ def modelo_baixado() -> bool:
 
 
 def biblioteca_instalada() -> bool:
-    """True se o WhisperX (e o PyTorch junto) está instalado neste ambiente."""
+    """True se a biblioteca de vozes (e o PyTorch junto) está neste ambiente.
+
+    Checamos o `pyannote.audio`, que é o que de fato carregamos — ele vem junto
+    do WhisperX, mas é dele que dependemos diretamente.
+    """
     from importlib.util import find_spec
 
     try:
-        return find_spec("whisperx") is not None
-    except (ImportError, ValueError):
+        return find_spec("pyannote.audio") is not None
+    except (ImportError, ValueError, ModuleNotFoundError):
         return False
 
 
@@ -82,35 +84,42 @@ def diarizacao_disponivel() -> bool:
     return biblioteca_instalada() and modelo_baixado()
 
 
-@contextmanager
-def _somente_arquivos_locais():
-    """Impede qualquer ida à internet ao carregar o modelo.
+def caminho_local_do_modelo() -> Path | None:
+    """Caminho do config.yaml baixado, ou None se o modelo não está em disco.
 
-    Sem isto, a biblioteca tentaria consultar o Hugging Face; como o repositório
-    é fechado, uma instalação sem token receberia 403 mesmo tendo o modelo em
-    disco. Em modo local o token deixa de ser necessário — que é exatamente o
-    que queremos para quem instala o programa.
+    Apontar direto para este arquivo é o que dispensa por completo o Hugging
+    Face em tempo de execução — sem rede, sem token, sem conta. Tentar carregar
+    pelo nome do repositório faria a biblioteca consultar o site e receber 401,
+    já que o repositório é fechado.
+
+    (Definir HF_HUB_OFFLINE em tempo de execução NÃO resolve: a biblioteca lê
+    essa configuração no momento em que é importada.)
     """
-    anteriores = {k: os.environ.get(k) for k in ("HF_HUB_OFFLINE", "HF_HOME", "HF_HUB_DISABLE_SYMLINKS")}
-    os.environ["HF_HUB_OFFLINE"] = "1"
-    os.environ.setdefault("HF_HOME", str(_pasta_modelos()))
-    os.environ["HF_HUB_DISABLE_SYMLINKS"] = "1"
-    try:
-        yield
-    finally:
-        for chave, valor in anteriores.items():
-            if valor is None:
-                os.environ.pop(chave, None)
-            else:
-                os.environ[chave] = valor
+    pasta = pasta_do_modelo() / "snapshots"
+    if not pasta.is_dir():
+        return None
+    for snapshot in sorted(pasta.iterdir(), reverse=True):
+        config = snapshot / "config.yaml"
+        if config.is_file():
+            return config
+    return None
 
 
 def carregar_pipeline(dispositivo: str):
-    """Carrega o modelo de identificação de vozes. Reutilize — é caro."""
-    with _somente_arquivos_locais():
-        from whisperx.diarize import DiarizationPipeline
+    """Carrega o modelo de identificação de vozes. Reutilize — é caro de criar."""
+    config = caminho_local_do_modelo()
+    if config is None:
+        raise RuntimeError(
+            "O modelo de identificação de vozes não está instalado neste computador."
+        )
 
-        return DiarizationPipeline(device=dispositivo, cache_dir=str(_pasta_modelos()))
+    import torch
+    from pyannote.audio import Pipeline
+
+    pipeline = Pipeline.from_pretrained(str(config))
+    if pipeline is None:
+        raise RuntimeError(f"Não consegui carregar o modelo de vozes de {config}")
+    return pipeline.to(torch.device(dispositivo))
 
 
 def diarizar_arquivo(
@@ -125,27 +134,84 @@ def diarizar_arquivo(
     `num_falantes` força a quantidade quando o usuário sabe (mais preciso);
     None deixa o modelo descobrir sozinho.
     """
-    with _somente_arquivos_locais():
-        resultado = pipeline(
-            str(arquivo),
-            num_speakers=num_falantes,
-            progress_callback=ao_progredir,
-        )
+    import torch
 
-    # A pipeline devolve um DataFrame (ou uma tupla, quando se pede embeddings).
-    tabela = resultado[0] if isinstance(resultado, tuple) else resultado
+    from .midia import TAXA_PADRAO, carregar_audio
 
-    turnos: list[TurnoFalante] = []
-    for linha in tabela.itertuples():
-        turnos.append(
-            TurnoFalante(
-                inicio=float(linha.start),
-                fim=float(linha.end),
-                falante=str(linha.speaker),
-            )
-        )
+    # Entregamos o áudio já decodificado em vez do caminho do arquivo: assim a
+    # leitura passa pelo ffmpeg que embutimos, e não pelo torchcodec (que exige
+    # bibliotecas do FFmpeg em DLL, ausentes na nossa distribuição).
+    amostras = carregar_audio(arquivo, TAXA_PADRAO)
+    entrada = {
+        "waveform": torch.from_numpy(amostras).unsqueeze(0),  # (canal, tempo)
+        "sample_rate": TAXA_PADRAO,
+    }
+
+    argumentos = {}
+    if num_falantes:
+        argumentos["num_speakers"] = num_falantes
+    if ao_progredir is not None:
+        argumentos["hook"] = _GanchoProgresso(ao_progredir)
+
+    saida = pipeline(entrada, **argumentos)
+    anotacao = _extrair_anotacao(saida)
+
+    turnos = [
+        TurnoFalante(inicio=float(trecho.start), fim=float(trecho.end), falante=str(voz))
+        for trecho, _, voz in anotacao.itertracks(yield_label=True)
+    ]
     turnos.sort(key=lambda t: (t.inicio, t.fim))
     return _renomear_por_ordem_de_fala(turnos)
+
+
+def _extrair_anotacao(saida):
+    """Pega a anotação de falantes do que a pipeline devolveu.
+
+    O pyannote 4 embrulha o resultado num objeto com duas versões: uma que
+    admite duas pessoas falando ao mesmo tempo e outra **exclusiva**, sem
+    sobreposição. Preferimos a exclusiva: o Whisper produz um texto linear, e
+    cada palavra só pode pertencer a uma voz. Versões antigas devolviam a
+    anotação direto — por isso o retorno simples também é aceito.
+    """
+    for atributo in ("exclusive_speaker_diarization", "speaker_diarization"):
+        anotacao = getattr(saida, atributo, None)
+        if anotacao is not None and hasattr(anotacao, "itertracks"):
+            return anotacao
+    if hasattr(saida, "itertracks"):
+        return saida
+    raise RuntimeError(
+        f"Formato inesperado do modelo de vozes: {type(saida).__name__}"
+    )
+
+
+class _GanchoProgresso:
+    """Traduz o progresso interno do pyannote para um número de 0 a 1.
+
+    O pyannote avisa por etapas (segmentação, embeddings, agrupamento), cada uma
+    com seu próprio contador. Como não há uma fração global pronta, informamos o
+    andamento dentro da etapa atual — o suficiente para a barra não ficar parada.
+    """
+
+    ETAPAS = ("segmentation", "embeddings", "speaker_counting", "discrete_diarization")
+
+    def __init__(self, ao_progredir: CallbackProgressoDiarizacao):
+        self._ao_progredir = ao_progredir
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return False
+
+    def __call__(self, nome_etapa, artefato, file=None, total=None, completed=None, **_):
+        if not total or completed is None:
+            return
+        try:
+            indice = self.ETAPAS.index(nome_etapa)
+        except ValueError:
+            indice = 0
+        fracao_etapa = min(1.0, completed / total)
+        self._ao_progredir((indice + fracao_etapa) / len(self.ETAPAS))
 
 
 def _renomear_por_ordem_de_fala(turnos: list[TurnoFalante]) -> list[TurnoFalante]:

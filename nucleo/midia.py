@@ -63,6 +63,45 @@ def duracao_segundos(arquivo: Path) -> float | None:
     return duracao if duracao > 0 else None
 
 
+#: Taxa de amostragem que os modelos de fala esperam.
+TAXA_PADRAO = 16000
+
+
+def carregar_audio(arquivo: Path, taxa: int = TAXA_PADRAO):
+    """Decodifica o áudio para um vetor mono float32, usando o ffmpeg embutido.
+
+    Existe porque a biblioteca de identificação de vozes tenta ler o arquivo com
+    o torchcodec, que exige as bibliotecas do FFmpeg em formato DLL — e nós
+    embutimos apenas o executável. Entregando o áudio já decodificado em
+    memória, dispensamos essa dependência frágil e ainda reaproveitamos o mesmo
+    ffmpeg que o resto do programa usa.
+    """
+    import numpy as np
+
+    comando = [
+        "ffmpeg",
+        "-nostdin",
+        "-threads", "0",
+        "-i", str(arquivo),
+        "-f", "s16le",
+        "-ac", "1",              # mono
+        "-acodec", "pcm_s16le",
+        "-ar", str(taxa),
+        "-",                      # saída na stdout
+    ]
+    processo = subprocess.run(
+        comando, capture_output=True, creationflags=_SEM_JANELA, check=False
+    )
+    if processo.returncode != 0:
+        detalhe = (processo.stderr or b"").decode("utf-8", "ignore").strip().splitlines()
+        raise RuntimeError(
+            "Não consegui ler o áudio do arquivo: "
+            + (detalhe[-1] if detalhe else "erro desconhecido no ffmpeg")
+        )
+
+    return np.frombuffer(processo.stdout, np.int16).astype(np.float32) / 32768.0
+
+
 def informacoes(arquivo: Path) -> dict[str, object]:
     """Dados do arquivo úteis para a interface antes de transcrever."""
     existe = arquivo.is_file()

@@ -528,6 +528,11 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
                 </option>
               ))}
             </select>
+            {/* O idioma é o critério que mais elimina modelos: só aparece quando
+                o modelo NÃO serve para qualquer idioma, para não virar ruído. */}
+            {modeloSel && modeloSel.idiomas && modeloSel.idiomas !== "Qualquer idioma" && (
+              <div className="check-nota">🌐 {modeloSel.idiomas}</div>
+            )}
             {modeloSel && !modeloSel.baixado && (
               <div className="check-nota">
                 Ainda não baixado (~{modeloSel.tamanho_aprox_mb} MB) — será baixado na primeira vez.

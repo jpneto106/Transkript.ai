@@ -8,6 +8,26 @@ const Canto = () => (
   </>
 );
 
+/** Motores de transcrição, na ordem em que aparecem na tela. */
+const MOTORES = [
+  {
+    chave: "whisper",
+    rotulo: "Whisper",
+    descricao: "Da OpenAI. Entende praticamente qualquer idioma e detecta o idioma sozinho.",
+    semSuporte: "O motor Whisper não está instalado neste computador.",
+  },
+  {
+    chave: "nvidia",
+    rotulo: "NVIDIA",
+    descricao:
+      "Bem mais rápidos que o Whisper e ocupam menos espaço, mas cada um entende um conjunto " +
+      "limitado de idiomas — confira antes de escolher.",
+    semSuporte:
+      "O motor NVIDIA não está instalado neste computador. Estes modelos aparecem aqui apenas " +
+      "para você conhecer as opções.",
+  },
+];
+
 interface Props {
   /** Muda quando uma transcrição termina; dispara a releitura da lista. */
   sinalRecarregar?: number;
@@ -15,6 +35,7 @@ interface Props {
 
 export default function Modelos({ sinalRecarregar = 0 }: Props) {
   const [modelos, setModelos] = useState<ModeloInfo[]>([]);
+  const [motoresOk, setMotoresOk] = useState<Record<string, boolean>>({});
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const pollRef = useRef<number | null>(null);
@@ -29,7 +50,9 @@ export default function Modelos({ sinalRecarregar = 0 }: Props) {
 
   async function carregar() {
     try {
-      setModelos(await api.modelos());
+      const [ms, ops] = await Promise.all([api.modelos(), api.opcoes()]);
+      setModelos(ms);
+      setMotoresOk(ops.motores || {});
     } catch {
       setErro("Não consegui carregar a lista de modelos.");
     } finally {
@@ -86,53 +109,63 @@ export default function Modelos({ sinalRecarregar = 0 }: Props) {
         mais lentos e ocupam mais espaço. Todos rodam localmente e você só baixa uma vez.
       </p>
 
-      <div className="card-kicker" style={{ marginBottom: "var(--space-3)" }}>Motor: Whisper (faster-whisper)</div>
-
       {erro && <div className="alerta alerta-erro"><span className="icone">⚠️</span><div>{erro}</div></div>}
       {carregando && <div className="vazio">Carregando…</div>}
 
-      <div className="grade-3">
-        {modelos.map((m) => (
-          <div key={m.nome} className="card blueprint elev-sm" style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-            <Canto />
-            <div className="card-kicker">
-              {m.baixado ? `Baixado · ${formatarMB(m.tamanho_disco_mb)}` : `~${m.tamanho_aprox_mb} MB`}
-            </div>
-            <div className="card-title">
-              {m.rotulo}
-              {m.recomendado && <span className="tag tag-accent" style={{ marginLeft: 8 }}>Recomendado</span>}
-              {m.e_padrao && <span className="tag tag-neutral" style={{ marginLeft: 6 }}>Padrão</span>}
-            </div>
-            <p className="card-body" style={{ flex: 1 }}>{m.resumo}</p>
+      {MOTORES.map((motor) => {
+        const doMotor = modelos.filter((m) => m.motor === motor.chave);
+        if (doMotor.length === 0) return null;
+        const instalado = motoresOk[motor.chave] !== false;
 
-            {m.download_status === "baixando" ? (
-              <span className="tag tag-neutral" style={{ alignSelf: "flex-start" }}>
-                <span className="girando" style={{ marginRight: 6 }}>⏳</span> Baixando…
-              </span>
-            ) : m.baixado ? (
-              <div className="acoes">
-                {!m.e_padrao && <button className="btn btn-ghost" onClick={() => tornarPadrao(m.nome)}>Tornar padrão</button>}
-                <button className="btn btn-ghost btn-perigo" onClick={() => remover(m.nome)}>Remover</button>
-              </div>
-            ) : (
-              <button className="btn btn-secondary btn-block blueprint" onClick={() => baixar(m.nome)}>
-                <Canto />Baixar
-              </button>
-            )}
+        return (
+          <div key={motor.chave} style={{ marginBottom: "var(--space-6)" }}>
+            <div className="card-kicker" style={{ marginBottom: "var(--space-2)" }}>
+              Motor: {motor.rotulo}
+              {!instalado && <span className="tag tag-neutral" style={{ marginLeft: 8 }}>não instalado</span>}
+            </div>
+            <p className="check-nota" style={{ marginBottom: "var(--space-3)" }}>
+              {instalado ? motor.descricao : motor.semSuporte}
+            </p>
+
+            <div className="grade-3">
+              {doMotor.map((m) => (
+                <div key={m.nome} className="card blueprint elev-sm" style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)", opacity: instalado ? 1 : 0.6 }}>
+                  <Canto />
+                  <div className="card-kicker">
+                    {m.baixado ? `Baixado · ${formatarMB(m.tamanho_disco_mb)}` : `~${m.tamanho_aprox_mb} MB`}
+                  </div>
+                  <div className="card-title">
+                    {m.rotulo}
+                    {m.recomendado && <span className="tag tag-accent" style={{ marginLeft: 8 }}>Recomendado</span>}
+                    {m.e_padrao && <span className="tag tag-neutral" style={{ marginLeft: 6 }}>Padrão</span>}
+                  </div>
+                  {/* Idioma em destaque: é o critério que mais elimina modelos
+                      para quem transcreve em português. */}
+                  <div className="tag tag-outline" style={{ alignSelf: "flex-start" }}>🌐 {m.idiomas}</div>
+                  <p className="card-body" style={{ flex: 1 }}>{m.resumo}</p>
+
+                  {!instalado ? (
+                    <span className="check-nota">Requer o motor {motor.rotulo}.</span>
+                  ) : m.download_status === "baixando" ? (
+                    <span className="tag tag-neutral" style={{ alignSelf: "flex-start" }}>
+                      <span className="girando" style={{ marginRight: 6 }}>⏳</span> Baixando…
+                    </span>
+                  ) : m.baixado ? (
+                    <div className="acoes">
+                      {!m.e_padrao && <button className="btn btn-ghost" onClick={() => tornarPadrao(m.nome)}>Tornar padrão</button>}
+                      <button className="btn btn-ghost btn-perigo" onClick={() => remover(m.nome)}>Remover</button>
+                    </div>
+                  ) : (
+                    <button className="btn btn-secondary btn-block blueprint" onClick={() => baixar(m.nome)}>
+                      <Canto />Baixar
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
-
-      <div className="card blueprint elev-sm" style={{ marginTop: "var(--space-6)", opacity: 0.85 }}>
-        <Canto />
-        <div className="card-kicker">Em breve</div>
-        <div className="card-title">Outros motores de transcrição</div>
-        <p className="card-body">
-          Suporte a modelos de outros fornecedores (como NVIDIA NeMo/Parakeet e outros do Hugging
-          Face) está planejado. Eles usam um motor diferente do Whisper e serão adicionados aqui
-          como opções extras, sem trocar o que já funciona.
-        </p>
-      </div>
+        );
+      })}
     </>
   );
 }

@@ -10,6 +10,10 @@ export interface ModeloInfo {
   tamanho_disco_mb: number | null;
   e_padrao: boolean;
   download_status?: "baixando" | "concluido" | "erro";
+  /** Qual motor roda este modelo: "whisper" ou "nvidia". */
+  motor: string;
+  /** Texto pronto sobre os idiomas que o modelo entende. */
+  idiomas: string;
 }
 
 export interface Opcoes {
@@ -18,6 +22,8 @@ export interface Opcoes {
   pasta_saida: string;
   /** Falso quando a biblioteca ou o modelo de vozes não estão instalados. */
   diarizacao_disponivel: boolean;
+  /** Motores de transcrição que este computador consegue rodar. */
+  motores: Record<string, boolean>;
 }
 
 export interface ParametrosTranscricao {

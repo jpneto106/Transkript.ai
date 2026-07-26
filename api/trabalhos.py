@@ -173,7 +173,6 @@ def _obter_modelo(nome: str, dispositivo: str, compute_type: str):
 
 
 def _obter_pipeline_diarizacao(dispositivo: str):
-    dispositivo = "cpu"  # PyTorch CUDA em thread causa deadlock
     with _pipeline_lock:
         if dispositivo not in _pipeline_diarizacao:
             _pipeline_diarizacao[dispositivo] = carregar_pipeline(dispositivo)

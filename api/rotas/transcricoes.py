@@ -10,9 +10,11 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 
+from nucleo import informacoes as informacoes_midia
+
 from .. import bd, trabalhos
 from ..configuracao import PASTA_UPLOADS_APP
-from ..esquemas import CriarTranscricaoRequest, CriarTranscricaoResposta
+from ..esquemas import CriarTranscricaoRequest, CriarTranscricaoResposta, InfoMidiaRequest
 
 router = APIRouter()
 
@@ -46,7 +48,29 @@ async def upload(arquivo: UploadFile):
                 break
             saida.write(pedaco)
     await arquivo.close()
-    return {"caminho": str(destino), "nome": destino.name}
+
+    # A duração vai junto para a interface já mostrar "1h 12min" assim que o
+    # arquivo termina de carregar, sem uma segunda ida ao servidor.
+    info = informacoes_midia(destino)
+    return {
+        "caminho": str(destino),
+        "nome": destino.name,
+        "duracao_segundos": info["duracao_segundos"],
+        "tamanho_bytes": info["tamanho_bytes"],
+    }
+
+
+@router.post("/info-midia")
+def info_midia(req: InfoMidiaRequest):
+    """Duração e tamanho de um arquivo local, para a interface mostrar antes de
+    transcrever. Usado quando o usuário cola um caminho em vez de enviar o arquivo.
+
+    Só lê metadados com o ffprobe — nunca devolve o conteúdo do arquivo."""
+    caminho = Path(req.caminho.strip())
+    if not caminho.is_file():
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado nesse caminho.")
+    return informacoes_midia(caminho)
+
 
 _MEDIA_TYPES = {
     "txt": "text/plain; charset=utf-8",
@@ -56,7 +80,7 @@ _MEDIA_TYPES = {
 }
 
 # Estados terminais: quando o job já acabou, o WebSocket manda o snapshot e fecha.
-_TERMINAIS = {trabalhos.CONCLUIDO, trabalhos.ERRO}
+_TERMINAIS = trabalhos.STATUS_TERMINAIS
 
 
 @router.post("", response_model=CriarTranscricaoResposta)
@@ -84,6 +108,32 @@ def detalhe(id_: str):
     if estado:
         registro["estado_ao_vivo"] = estado
     return registro
+
+
+@router.post("/{id_}/cancelar")
+def cancelar(id_: str):
+    """Interrompe uma transcrição em andamento.
+
+    O corte não é instantâneo: o worker confere o pedido entre um trecho de
+    áudio e o seguinte, então pode levar alguns segundos até parar de fato.
+    """
+    registro = bd.obter_transcricao(id_)
+    if registro is None:
+        raise HTTPException(status_code=404, detail="Transcrição não encontrada.")
+
+    status = trabalhos.cancelar_job(id_)
+    if status is None:
+        # Job não está mais em memória (servidor reiniciado, por exemplo).
+        raise HTTPException(
+            status_code=409,
+            detail="Essa transcrição não está mais em andamento.",
+        )
+    if status in trabalhos.STATUS_TERMINAIS:
+        raise HTTPException(
+            status_code=409,
+            detail="Essa transcrição já havia terminado.",
+        )
+    return {"cancelando": True, "status_no_pedido": status}
 
 
 @router.delete("/{id_}")
@@ -148,6 +198,9 @@ async def progresso_ws(websocket: WebSocket, id_: str):
                     registro = bd.obter_transcricao(id_)
                     if estado["status"] == trabalhos.CONCLUIDO:
                         await websocket.send_json({"tipo": "concluido", "transcricao": registro})
+                    elif estado["status"] == trabalhos.CANCELADO:
+                        # Tipo próprio: cancelar é escolha do usuário, não falha.
+                        await websocket.send_json({"tipo": "cancelado", "transcricao": registro})
                     else:
                         await websocket.send_json(
                             {"tipo": "erro", "mensagem": estado.get("erro") or "Erro na transcrição.",

@@ -1,7 +1,15 @@
 // Cliente da API. Em produção (pywebview) o frontend é servido pela própria API,
 // então usamos caminhos relativos. Em dev (Vite na 5173), apontamos para a 8000.
 
-import type { Dicionario, ModeloInfo, Opcoes, ParametrosTranscricao, Transcricao } from "./tipos";
+import type {
+  Dicionario,
+  InfoMidia,
+  ModeloInfo,
+  Opcoes,
+  ParametrosTranscricao,
+  RespostaUpload,
+  Transcricao,
+} from "./tipos";
 
 const EM_DEV = import.meta.env.DEV;
 const BASE = EM_DEV ? "http://127.0.0.1:8000" : "";
@@ -70,7 +78,7 @@ export const api = {
     await json(await fetch(`${BASE}/api/modelos/${nome}`, { method: "DELETE" }));
   },
 
-  async enviarArquivo(arquivo: File, aoProgredir?: (pct: number) => void): Promise<{ caminho: string; nome: string }> {
+  async enviarArquivo(arquivo: File, aoProgredir?: (pct: number) => void): Promise<RespostaUpload> {
     // Usa XMLHttpRequest para ter progresso de upload (fetch não expõe upload progress).
     return new Promise((resolve, reject) => {
       const form = new FormData();
@@ -97,6 +105,22 @@ export const api = {
         body: JSON.stringify(p),
       }),
     );
+  },
+
+  /** Duração e tamanho de um arquivo local (usado quando o usuário cola um caminho). */
+  async infoMidia(caminho: string): Promise<InfoMidia> {
+    return json(
+      await fetch(`${BASE}/api/transcricoes/info-midia`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ caminho }),
+      }),
+    );
+  },
+
+  /** Pede o cancelamento. A parada não é imediata — leva alguns segundos. */
+  async cancelarTranscricao(id: string): Promise<void> {
+    await json(await fetch(`${BASE}/api/transcricoes/${id}/cancelar`, { method: "POST" }));
   },
 
   async historico(): Promise<Transcricao[]> {

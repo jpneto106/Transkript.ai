@@ -38,6 +38,9 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
 
   const [entrada, setEntrada] = useState("");
   const [nomeArquivo, setNomeArquivo] = useState("");
+  const [duracaoMidia, setDuracaoMidia] = useState<number | null>(null);
+  const [tamanhoMidia, setTamanhoMidia] = useState<number | null>(null);
+  const [lendoInfo, setLendoInfo] = useState(false);
   const [modelo, setModelo] = useState("small");
   const [idioma, setIdioma] = useState("");
   const [dispositivo, setDispositivo] = useState("auto");
@@ -57,6 +60,9 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
 
   const [estado, setEstado] = useState<EstadoAoVivo | null>(null);
   const [processando, setProcessando] = useState(false);
+  const [idJob, setIdJob] = useState<string | null>(null);
+  const [cancelando, setCancelando] = useState(false);
+  const [cancelado, setCancelado] = useState(false);
   const [resultado, setResultado] = useState<Transcricao | null>(null);
   const [textoTxt, setTextoTxt] = useState("");
   const [textoSrt, setTextoSrt] = useState("");
@@ -70,6 +76,28 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
     carregar();
     return () => wsRef.current?.close();
   }, []);
+
+  // Caminho colado à mão: consulta a duração no servidor depois que o usuário
+  // para de digitar. Links (http) ficam de fora — só saberíamos após baixar.
+  useEffect(() => {
+    const valor = entrada.trim();
+    if (!valor || duracaoMidia !== null) return;
+    if (valor.startsWith("http://") || valor.startsWith("https://")) return;
+
+    const temporizador = setTimeout(async () => {
+      setLendoInfo(true);
+      try {
+        const info = await api.infoMidia(valor);
+        setDuracaoMidia(info.duracao_segundos);
+        setTamanhoMidia(info.tamanho_bytes);
+      } catch {
+        /* caminho ainda incompleto ou inexistente — silencioso de propósito */
+      } finally {
+        setLendoInfo(false);
+      }
+    }, 600);
+    return () => clearTimeout(temporizador);
+  }, [entrada, duracaoMidia]);
 
   async function carregar() {
     try {
@@ -103,10 +131,17 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
     }
   }
 
-  function definirEntrada(valor: string, nome?: string) {
+  function definirEntrada(
+    valor: string,
+    nome?: string,
+    info?: { duracao: number | null; tamanho: number | null },
+  ) {
     setEntrada(valor);
     setResultado(null);
+    setCancelado(false);
     setErro("");
+    setDuracaoMidia(info?.duracao ?? null);
+    setTamanhoMidia(info?.tamanho ?? null);
     if (nome !== undefined) {
       setNomeArquivo(nome);
       return;
@@ -125,7 +160,8 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
     setProgressoUpload(0);
     try {
       const r = await api.enviarArquivo(arquivo, setProgressoUpload);
-      definirEntrada(r.caminho, r.nome);
+      // A duração vem junto do upload — o servidor já tem o arquivo em mãos.
+      definirEntrada(r.caminho, r.nome, { duracao: r.duracao_segundos, tamanho: r.tamanho_bytes });
     } catch {
       setErro("Não consegui carregar esse arquivo. Tente de novo.");
     } finally {
@@ -156,6 +192,9 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
     setVista("texto");
     setProcessando(true);
     setEstado(null);
+    setCancelado(false);
+    setCancelando(false);
+    setIdJob(null);
 
     try {
       const { id } = await api.criarTranscricao({
@@ -171,6 +210,7 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
         dicionario_id: dicionarioId || null,
         diarizar,
       });
+      setIdJob(id);
 
       const ws = api.wsProgresso(id);
       wsRef.current = ws;
@@ -186,8 +226,16 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
           if (fmts.includes("txt")) api.textoArquivo(id, "txt").then(setTextoTxt).catch(() => {});
           if (fmts.includes("srt")) api.textoArquivo(id, "srt").then(setTextoSrt).catch(() => {});
           ws.close();
+        } else if (msg.tipo === "cancelado") {
+          // Interrupção pedida — nada de tela vermelha de erro.
+          setProcessando(false);
+          setCancelando(false);
+          setCancelado(true);
+          aoConcluir();
+          ws.close();
         } else if (msg.tipo === "erro") {
           setProcessando(false);
+          setCancelando(false);
           setErro(msg.mensagem || "Ocorreu um erro na transcrição.");
           ws.close();
         }
@@ -199,6 +247,18 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
     } catch (e) {
       setProcessando(false);
       setErro(e instanceof Error ? e.message : "Erro ao iniciar a transcrição.");
+    }
+  }
+
+  async function cancelar() {
+    if (!idJob || cancelando) return;
+    setCancelando(true);
+    try {
+      await api.cancelarTranscricao(idJob);
+      // O servidor confirma pelo WebSocket ("cancelado") quando parar de fato.
+    } catch (e) {
+      setCancelando(false);
+      setErro(e instanceof Error ? e.message : "Não consegui cancelar a transcrição.");
     }
   }
 
@@ -288,8 +348,17 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
   if (processando) {
     return (
       <>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-6)" }}>
-          <h3 style={{ margin: 0 }}>Transcrevendo…</h3>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-6)", gap: "var(--space-3)" }}>
+          <h3 style={{ margin: 0 }}>{cancelando ? "Cancelando…" : "Transcrevendo…"}</h3>
+          <button
+            type="button"
+            className="btn btn-perigo"
+            onClick={cancelar}
+            disabled={cancelando || !idJob}
+            title={cancelando ? "Aguardando o trecho atual terminar" : "Interromper esta transcrição"}
+          >
+            {cancelando ? "Cancelando…" : "✕ Cancelar"}
+          </button>
         </div>
         <div className="card blueprint elev-sm">
           <Canto />
@@ -307,6 +376,35 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
             </span>
             <span>{percentual !== null ? `${percentual}%` : ""}</span>
           </div>
+          {cancelando && (
+            <div className="check-nota" style={{ marginTop: "var(--space-3)" }}>
+              Terminando o trecho atual antes de parar — leva alguns segundos.
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  // ---- cancelado ----
+  if (cancelado) {
+    return (
+      <>
+        <div className="alerta alerta-info">
+          <span className="icone">⏹</span>
+          <div>
+            <b>Transcrição cancelada.</b> Nenhum arquivo foi gerado. O áudio continua
+            disponível — é só clicar em transcrever de novo quando quiser.
+          </div>
+        </div>
+        <div className="acoes">
+          <button className="btn btn-primary blueprint" onClick={() => setCancelado(false)}>
+            <Canto />
+            Voltar
+          </button>
+          <button className="btn btn-ghost" onClick={() => { setCancelado(false); definirEntrada(""); }}>
+            Escolher outro arquivo
+          </button>
         </div>
       </>
     );
@@ -384,6 +482,22 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="nome">{nomeArquivo || entrada}</div>
               {nomeArquivo && <div className="caminho">{entrada}</div>}
+              {/* Duração e tamanho: o usuário confere que pegou o arquivo certo
+                  antes de começar um trabalho que pode levar muito tempo. */}
+              {(lendoInfo || duracaoMidia !== null || tamanhoMidia !== null) && (
+                <div className="midia-info">
+                  {lendoInfo ? (
+                    "lendo duração…"
+                  ) : (
+                    <>
+                      {duracaoMidia !== null && (
+                        <span className="tag tag-outline">⏱ {formatarDuracao(duracaoMidia)}</span>
+                      )}
+                      {tamanhoMidia !== null && <span>{formatarTamanho(tamanhoMidia)}</span>}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
             <button className="btn btn-ghost" onClick={() => definirEntrada("")}>Trocar</button>
           </div>
@@ -523,9 +637,31 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
   );
 }
 
+/** Relógio para o progresso: MM:SS, virando H:MM:SS quando passa de uma hora. */
 function formatarTempo(segundos: number): string {
-  const s = Math.max(0, Math.round(segundos));
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+  const total = Math.max(0, Math.round(segundos));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const mm = String(m).padStart(2, "0");
+  const ss = String(s).padStart(2, "0");
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+/** Duração por extenso, para o usuário reconhecer o arquivo de relance. */
+function formatarDuracao(segundos: number): string {
+  const total = Math.max(0, Math.round(segundos));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}min`;
+  if (m > 0) return `${m}min ${String(s).padStart(2, "0")}s`;
+  return `${s}s`;
+}
+
+function formatarTamanho(bytes: number): string {
+  const mb = bytes / (1024 * 1024);
+  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
+  if (mb >= 10) return `${Math.round(mb)} MB`;
+  return `${mb.toFixed(1)} MB`;
 }

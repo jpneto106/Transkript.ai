@@ -8,14 +8,21 @@ const Canto = () => (
   </>
 );
 
-export default function Historico() {
+interface Props {
+  /** Muda quando uma transcrição termina; dispara a releitura da lista. */
+  sinalRecarregar?: number;
+}
+
+export default function Historico({ sinalRecarregar = 0 }: Props) {
   const [itens, setItens] = useState<Transcricao[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState("");
   const [aberto, setAberto] = useState<Transcricao | null>(null);
   const [texto, setTexto] = useState("");
 
-  useEffect(() => { carregar(); }, []);
+  // A tela continua montada ao trocar de aba (para não perder busca e rolagem),
+  // então a lista é recarregada por sinal em vez de por remontagem.
+  useEffect(() => { carregar(); }, [sinalRecarregar]);
 
   async function carregar() {
     setCarregando(true);

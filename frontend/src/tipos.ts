@@ -32,6 +32,21 @@ export interface ParametrosTranscricao {
   diarizar: boolean;
 }
 
+/** Metadados do arquivo escolhido, mostrados antes de transcrever. */
+export interface InfoMidia {
+  nome: string;
+  existe: boolean;
+  tamanho_bytes: number | null;
+  duracao_segundos: number | null;
+}
+
+export interface RespostaUpload {
+  caminho: string;
+  nome: string;
+  duracao_segundos: number | null;
+  tamanho_bytes: number | null;
+}
+
 export interface Dicionario {
   id: string;
   nome: string;
@@ -91,4 +106,10 @@ export interface MensagemErro {
   transcricao?: Transcricao;
 }
 
-export type MensagemWS = EstadoAoVivo | MensagemConcluido | MensagemErro;
+/** Cancelamento é escolha do usuário, por isso tem tipo próprio (não é erro). */
+export interface MensagemCancelado {
+  tipo: "cancelado";
+  transcricao?: Transcricao;
+}
+
+export type MensagemWS = EstadoAoVivo | MensagemConcluido | MensagemErro | MensagemCancelado;

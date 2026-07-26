@@ -12,6 +12,7 @@ from typing import Any
 
 from nucleo import (
     EventoProgresso,
+    TranscricaoCancelada,
     carregar_modelo,
     detectar_dispositivo,
     encontrar_arquivos,
@@ -29,6 +30,7 @@ CARREGANDO_MODELO = "carregando_modelo"
 TRANSCREVENDO = "transcrevendo"
 CONCLUIDO = "concluido"
 ERRO = "erro"
+CANCELADO = "cancelado"
 
 _ROTULOS_STATUS = {
     NA_FILA: "Na fila",
@@ -37,7 +39,11 @@ _ROTULOS_STATUS = {
     TRANSCREVENDO: "Transcrevendo",
     CONCLUIDO: "Concluído",
     ERRO: "Erro",
+    CANCELADO: "Cancelado",
 }
+
+#: Status em que o job já acabou — não há mais o que cancelar.
+STATUS_TERMINAIS = frozenset({CONCLUIDO, ERRO, CANCELADO})
 
 
 @dataclass
@@ -49,6 +55,7 @@ class EstadoJob:
     mensagem: str = ""
     erro: str | None = None
     versao: int = 0  # incrementa a cada mudança, para o WebSocket detectar novidade
+    cancelado: bool = False  # pedido de cancelamento; lido pelo worker entre trechos
 
     def snapshot(self) -> dict[str, Any]:
         percentual = None
@@ -94,6 +101,37 @@ def obter_estado(id_: str) -> dict[str, Any] | None:
     with _estados_lock:
         estado = _estados.get(id_)
         return estado.snapshot() if estado else None
+
+
+def cancelar_job(id_: str) -> str | None:
+    """Pede o cancelamento de um job em andamento.
+
+    Devolve o status do job no momento do pedido, ou None se ele não está mais
+    em memória. O cancelamento não é imediato: o worker confere a marca entre um
+    trecho de áudio e o seguinte, então leva no máximo alguns segundos.
+    """
+    with _estados_lock:
+        estado = _estados.get(id_)
+        if estado is None:
+            return None
+        if estado.status in STATUS_TERMINAIS:
+            return estado.status  # já acabou — nada a cancelar
+        estado.cancelado = True
+        estado.mensagem = "Cancelando…"
+        estado.versao += 1
+        return estado.status
+
+
+def _foi_cancelado(id_: str) -> bool:
+    with _estados_lock:
+        estado = _estados.get(id_)
+        return bool(estado and estado.cancelado)
+
+
+def _parar_se_cancelado(id_: str) -> None:
+    """Aborta a etapa atual se o usuário pediu cancelamento."""
+    if _foi_cancelado(id_):
+        raise TranscricaoCancelada()
 
 
 def _obter_modelo(nome: str, dispositivo: str, compute_type: str):
@@ -148,6 +186,9 @@ def _processar_job(id_: str, parametros: dict[str, Any]) -> None:
     try:
         entrada = parametros["entrada"]
 
+        # O job pode ter sido cancelado enquanto esperava na fila.
+        _parar_se_cancelado(id_)
+
         # 1) Resolver a entrada (baixar se for URL).
         _atualizar_estado(id_, status=BAIXANDO, mensagem=_ROTULOS_STATUS[BAIXANDO])
         bd.atualizar_transcricao(id_, {"status": BAIXANDO, "atualizado_em": _agora()})
@@ -164,6 +205,8 @@ def _processar_job(id_: str, parametros: dict[str, Any]) -> None:
             {"arquivo_local": str(arquivo), "nome_arquivo": arquivo.name, "atualizado_em": _agora()},
         )
 
+        _parar_se_cancelado(id_)
+
         # 2) Escolher dispositivo e carregar modelo (com cache).
         _atualizar_estado(id_, status=CARREGANDO_MODELO, mensagem=_ROTULOS_STATUS[CARREGANDO_MODELO])
         bd.atualizar_transcricao(id_, {"status": CARREGANDO_MODELO, "atualizado_em": _agora()})
@@ -171,6 +214,8 @@ def _processar_job(id_: str, parametros: dict[str, Any]) -> None:
         dispositivo, compute_type = detectar_dispositivo(parametros.get("dispositivo", "auto"))
         modelo = _obter_modelo(parametros["modelo"], dispositivo, compute_type)
         bd.atualizar_transcricao(id_, {"dispositivo": dispositivo, "atualizado_em": _agora()})
+
+        _parar_se_cancelado(id_)
 
         # 3) Transcrever, emitindo progresso.
         _atualizar_estado(id_, status=TRANSCREVENDO, mensagem=_ROTULOS_STATUS[TRANSCREVENDO])
@@ -202,6 +247,7 @@ def _processar_job(id_: str, parametros: dict[str, Any]) -> None:
             max_duracao=parametros["max_duracao"],
             initial_prompt=initial_prompt,
             ao_progredir=ao_progredir,
+            cancelado=lambda: _foi_cancelado(id_),
         )
 
         # 4) Gravar arquivos de saída.
@@ -227,6 +273,11 @@ def _processar_job(id_: str, parametros: dict[str, Any]) -> None:
             progresso_segundos=resultado.duracao,
             duracao_total=resultado.duracao,
         )
+
+    except TranscricaoCancelada:
+        # Interrupção pedida pelo usuário — não é falha, então nada de tela de erro.
+        bd.atualizar_transcricao(id_, {"status": CANCELADO, "atualizado_em": _agora()})
+        _atualizar_estado(id_, status=CANCELADO, mensagem=_ROTULOS_STATUS[CANCELADO])
 
     except Exception as erro:  # noqa: BLE001 — queremos reportar qualquer falha ao usuário
         mensagem = str(erro) or "Ocorreu um erro inesperado durante a transcrição."

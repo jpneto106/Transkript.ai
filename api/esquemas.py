@@ -22,6 +22,10 @@ class CriarTranscricaoRequest(BaseModel):
     diarizar: bool = Field(False, description="Identificar falantes (ainda não implementado no motor).")
 
 
+class InfoMidiaRequest(BaseModel):
+    caminho: str = Field(..., description="Caminho local do arquivo de áudio/vídeo.")
+
+
 class DicionarioRequest(BaseModel):
     nome: str = Field(..., min_length=1)
     descricao: str | None = None

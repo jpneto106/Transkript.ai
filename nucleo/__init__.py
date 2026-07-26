@@ -48,7 +48,13 @@ from .formatacao import (
     formatar_hms,
     formatar_timestamp_legenda,
 )
-from .transcricao import EventoProgresso, carregar_modelo, transcrever_arquivo
+from .midia import duracao_segundos, informacoes
+from .transcricao import (
+    EventoProgresso,
+    TranscricaoCancelada,
+    carregar_modelo,
+    transcrever_arquivo,
+)
 
 __all__ = [
     "EXTENSOES_SUPORTADAS",
@@ -62,6 +68,9 @@ __all__ = [
     "ResultadoTranscricao",
     "Segmento",
     "EventoProgresso",
+    "TranscricaoCancelada",
+    "duracao_segundos",
+    "informacoes",
     "montar_blocos",
     "extrair_palavras",
     "detectar_dispositivo",

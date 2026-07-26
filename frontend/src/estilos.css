@@ -473,6 +473,17 @@ textarea.input { min-height: 90px; resize: vertical; }
 .arquivo-fila .nome { flex: 1; font-size: 13.5px; word-break: break-all; }
 .arquivo-fila .caminho { font-size: 11.5px; color: var(--color-neutral-600); word-break: break-all; }
 
+/* Duração e tamanho do arquivo escolhido, para conferência antes de transcrever. */
+.midia-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--color-neutral-600);
+}
+.midia-info .tag { font-size: 11px; padding: 1px var(--space-2); }
+
 /* ------------------------------------------------------------------ progresso */
 .progress-track {
   height: 8px;

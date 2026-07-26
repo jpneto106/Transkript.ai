@@ -8,16 +8,24 @@ const Canto = () => (
   </>
 );
 
-export default function Modelos() {
+interface Props {
+  /** Muda quando uma transcrição termina; dispara a releitura da lista. */
+  sinalRecarregar?: number;
+}
+
+export default function Modelos({ sinalRecarregar = 0 }: Props) {
   const [modelos, setModelos] = useState<ModeloInfo[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const pollRef = useRef<number | null>(null);
 
+  // Só ao desmontar de vez: um download em andamento não pode perder o polling
+  // quando o usuário troca de aba.
   useEffect(() => {
-    carregar();
     return () => { if (pollRef.current) window.clearInterval(pollRef.current); };
   }, []);
+
+  useEffect(() => { carregar(); }, [sinalRecarregar]);
 
   async function carregar() {
     try {

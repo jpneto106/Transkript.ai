@@ -26,6 +26,17 @@ class EventoProgresso:
 
 CallbackProgresso = Callable[[EventoProgresso], None]
 
+#: Consultado entre um trecho e outro; devolvendo True, a transcrição é abortada.
+VerificadorCancelamento = Callable[[], bool]
+
+
+class TranscricaoCancelada(Exception):
+    """Levantada quando o usuário cancela a transcrição em andamento.
+
+    É uma interrupção pedida, não uma falha: quem chama deve tratá-la como
+    cancelamento (e não mostrar tela de erro ao usuário).
+    """
+
 
 def carregar_modelo(nome: str, dispositivo: str, compute_type: str):
     """Carrega um WhisperModel. Isolado numa função para que CLI e API possam
@@ -47,6 +58,7 @@ def transcrever_arquivo(
     max_duracao: float,
     initial_prompt: str | None = None,
     ao_progredir: CallbackProgresso | None = None,
+    cancelado: VerificadorCancelamento | None = None,
 ) -> ResultadoTranscricao:
     segmentos_gerados, info = modelo.transcribe(
         str(arquivo),
@@ -73,7 +85,12 @@ def transcrever_arquivo(
 
     segmentos_brutos = []
     inicio_processamento = time.perf_counter()
+    # O faster-whisper devolve um gerador preguiçoso: o trabalho pesado acontece
+    # a cada iteração. Por isso conferir o cancelamento aqui interrompe de fato
+    # o processamento, e não só a coleta dos resultados.
     for seg in segmentos_gerados:
+        if cancelado is not None and cancelado():
+            raise TranscricaoCancelada()
         segmentos_brutos.append(seg)
         _emitir(min(seg.end, duracao) if duracao else seg.end)
     if duracao:

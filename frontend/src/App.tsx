@@ -23,6 +23,18 @@ function usarTema(): [Tema, () => void] {
   return [tema, () => setTema((t) => (t === "claro" ? "escuro" : "claro"))];
 }
 
+/**
+ * Envelope de aba: mantém a tela MONTADA e apenas a esconde quando inativa.
+ *
+ * Antes, trocar de aba desmontava a tela — e com ela ia embora a transcrição em
+ * andamento (formulário, progresso e o WebSocket). Com `display: contents` o
+ * envelope não cria caixa nenhuma no layout quando visível, então o visual
+ * continua idêntico ao de antes.
+ */
+function Painel({ ativo, children }: { ativo: boolean; children: React.ReactNode }) {
+  return <div style={{ display: ativo ? "contents" : "none" }}>{children}</div>;
+}
+
 function ItemNav({
   ativo,
   onClick,
@@ -47,6 +59,14 @@ export default function App() {
   const [tema, alternarTema] = usarTema();
   const [online, setOnline] = useState<boolean | null>(null);
   const [recarregar, setRecarregar] = useState(0);
+  // Telas já abertas alguma vez: ficam montadas para não perder o que está em
+  // andamento. As nunca visitadas não são criadas à toa.
+  const [visitadas, setVisitadas] = useState<Set<Aba>>(() => new Set<Aba>(["nova"]));
+
+  function irPara(destino: Aba) {
+    setVisitadas((atuais) => (atuais.has(destino) ? atuais : new Set(atuais).add(destino)));
+    setAba(destino);
+  }
 
   useEffect(() => {
     api.saude().then(setOnline);
@@ -63,7 +83,7 @@ export default function App() {
         <nav className="nav">
           <ItemNav
             ativo={aba === "nova"}
-            onClick={() => setAba("nova")}
+            onClick={() => irPara("nova")}
             icone={
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 20h9" />
@@ -75,7 +95,7 @@ export default function App() {
           </ItemNav>
           <ItemNav
             ativo={aba === "historico"}
-            onClick={() => setAba("historico")}
+            onClick={() => irPara("historico")}
             icone={
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
@@ -87,7 +107,7 @@ export default function App() {
           </ItemNav>
           <ItemNav
             ativo={aba === "modelos"}
-            onClick={() => setAba("modelos")}
+            onClick={() => irPara("modelos")}
             icone={
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m7.5 4.27 9 5.15" />
@@ -101,7 +121,7 @@ export default function App() {
           </ItemNav>
           <ItemNav
             ativo={aba === "dicionarios"}
-            onClick={() => setAba("dicionarios")}
+            onClick={() => irPara("dicionarios")}
             icone={
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
@@ -138,12 +158,29 @@ export default function App() {
             </div>
           )}
 
-          {aba === "nova" && (
-            <NovaTranscricao aoConcluir={() => setRecarregar((n) => n + 1)} irParaModelos={() => setAba("modelos")} />
+          {/* Cada tela visitada fica montada e só é escondida — é isso que faz a
+              transcrição em andamento sobreviver à troca de abas. */}
+          <Painel ativo={aba === "nova"}>
+            <NovaTranscricao
+              aoConcluir={() => setRecarregar((n) => n + 1)}
+              irParaModelos={() => irPara("modelos")}
+            />
+          </Painel>
+          {visitadas.has("historico") && (
+            <Painel ativo={aba === "historico"}>
+              <Historico sinalRecarregar={recarregar} />
+            </Painel>
           )}
-          {aba === "historico" && <Historico />}
-          {aba === "modelos" && <Modelos key={recarregar} />}
-          {aba === "dicionarios" && <Dicionarios />}
+          {visitadas.has("modelos") && (
+            <Painel ativo={aba === "modelos"}>
+              <Modelos sinalRecarregar={recarregar} />
+            </Painel>
+          )}
+          {visitadas.has("dicionarios") && (
+            <Painel ativo={aba === "dicionarios"}>
+              <Dicionarios />
+            </Painel>
+          )}
         </div>
       </main>
     </div>

@@ -27,7 +27,6 @@ from nucleo.resumos.cliente import (
     resumir,
 )
 
-
 # ------------------------------------------------------------- catálogo
 
 def test_catalogo_tem_provedores_esperados():

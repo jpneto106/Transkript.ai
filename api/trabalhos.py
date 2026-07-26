@@ -311,6 +311,8 @@ def _processar_job(id_: str, parametros: dict[str, Any]) -> None:
         # 4) Identificar falantes, se pedido e disponível.
         aviso = ""
         if parametros.get("diarizar"):
+            import sys
+            print(f"[DIAR] parametros.diarizar=True, disponivel={diarizacao_disponivel()}", file=sys.stderr, flush=True)
             _parar_se_cancelado(id_)
             if not diarizacao_disponivel():
                 aviso = (
@@ -319,12 +321,15 @@ def _processar_job(id_: str, parametros: dict[str, Any]) -> None:
                 )
             else:
                 try:
+                    import sys, traceback
+                    print(f"[DIAR] iniciando _identificar_falantes para {id_[:12]}", file=sys.stderr, flush=True)
                     _identificar_falantes(id_, resultado, arquivo, dispositivo, parametros)
+                    print(f"[DIAR] concluido para {id_[:12]}", file=sys.stderr, flush=True)
                 except TranscricaoCancelada:
                     raise
                 except Exception as erro_diarizacao:  # noqa: BLE001
-                    # A transcrição já está pronta — vale mais entregá-la com um
-                    # aviso do que perder o trabalho todo por causa do extra.
+                    traceback.print_exc(file=sys.stderr)
+                    print(f"[DIAR] ERRO: {erro_diarizacao}", file=sys.stderr, flush=True)
                     aviso = f"Não consegui identificar os falantes: {erro_diarizacao}"
 
         # 5) Gravar arquivos de saída.

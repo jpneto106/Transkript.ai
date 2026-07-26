@@ -95,6 +95,20 @@ _modelo_lock = threading.Lock()
 _pipeline_diarizacao: dict[str, Any] = {}
 _pipeline_lock = threading.Lock()
 
+# Pré-carrega a pipeline de diarização na thread principal durante o import.
+# ThreadPoolExecutor + PyTorch CUDA podem causar deadlock de contexto —
+# carregar a pipeline aqui evita que ela seja carregada pela primeira vez
+# dentro de uma thread filha.
+if diarizacao_disponivel():
+    try:
+        _pipeline_diarizacao["cpu"] = carregar_pipeline("cpu")
+        import torch
+        if torch.cuda.is_available():
+            _pipeline_diarizacao["cuda"] = carregar_pipeline("cuda")
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+
 
 def _agora() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -159,6 +173,7 @@ def _obter_modelo(nome: str, dispositivo: str, compute_type: str):
 
 
 def _obter_pipeline_diarizacao(dispositivo: str):
+    dispositivo = "cpu"  # PyTorch CUDA em thread causa deadlock
     with _pipeline_lock:
         if dispositivo not in _pipeline_diarizacao:
             _pipeline_diarizacao[dispositivo] = carregar_pipeline(dispositivo)

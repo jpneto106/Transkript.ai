@@ -246,6 +246,18 @@ Distribuído sob a licença **MIT** — livre para usar, modificar e distribuir.
 
 Feito por **JP.Neto**.
 
+**Assistentes de IA que participaram do desenvolvimento:**
+
+- **DeepSeek V4 Pro** — responsável pela maior parte da **versão 4**
+  (diarização com GPU, Resumo por IA multi-provedor, presets de
+  legenda, tela de Configurações, bootstrapper do instalador). Atuou
+  como par de programação durante toda a etapa 7 do plano.
+- **Claude Code** (Anthropic) — colaborou nas versões 2 e 3
+  (instalador .exe, identificação de falantes, motor NVIDIA).
+
+O código-fonte e as decisões de arquitetura são do autor humano;
+as IAs aceleraram depuração, refatoração e geração de testes.
+
 ---
 
 ## 📜 Avisos de terceiros

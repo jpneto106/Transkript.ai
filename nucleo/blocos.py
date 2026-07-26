@@ -18,10 +18,22 @@ def montar_blocos(palavras: list[Palavra], max_caracteres: int, max_duracao: flo
     def fechar_bloco() -> None:
         if not atual:
             return
-        blocos.append(Segmento(inicio=atual[0].inicio, fim=atual[-1].fim, texto=texto_de(atual)))
+        blocos.append(
+            Segmento(
+                inicio=atual[0].inicio,
+                fim=atual[-1].fim,
+                texto=texto_de(atual),
+                falante=atual[0].falante,
+            )
+        )
         atual.clear()
 
     for palavra in palavras:
+        # Troca de falante sempre encerra o bloco, mesmo curto: misturar duas
+        # vozes num mesmo bloco tornaria a legenda e o texto ilegíveis.
+        if atual and palavra.falante != atual[-1].falante:
+            fechar_bloco()
+
         candidato = atual + [palavra]
         texto_candidato = texto_de(candidato)
         duracao_candidato = palavra.fim - candidato[0].inicio

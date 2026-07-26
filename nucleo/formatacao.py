@@ -11,6 +11,8 @@ class Segmento:
     inicio: float
     fim: float
     texto: str
+    #: Rótulo canônico do falante ("FALANTE_01"), ou None quando não houve diarização.
+    falante: str | None = None
 
 
 @dataclass
@@ -18,6 +20,7 @@ class Palavra:
     inicio: float
     fim: float
     texto: str
+    falante: str | None = None
 
 
 @dataclass
@@ -28,6 +31,11 @@ class ResultadoTranscricao:
     duracao: float
     segmentos: list[Segmento] = field(default_factory=list)
     tempo_processamento: float = 0.0
+    #: Palavras com timestamp individual. Guardadas para permitir rearranjar os
+    #: blocos depois da diarização, sem transcrever o áudio de novo.
+    palavras: list[Palavra] = field(default_factory=list)
+    #: Rótulos de falante encontrados, na ordem em que apareceram no áudio.
+    falantes: list[str] = field(default_factory=list)
 
     @property
     def texto_completo(self) -> str:

@@ -105,6 +105,26 @@ def compilar_servidor() -> Path:
     return pasta
 
 
+def garantir_ffmpeg() -> Path:
+    """Garante que <raiz>/ferramentas/ffmpeg/bin tem ffmpeg.exe e ffprobe.exe.
+
+    Se estiver faltando, baixa o build win64-lgpl-shared do BtbN (com
+    conferência de sha256) pelo `instalador/baixar_ffmpeg.py`. O script é
+    idempotente: se o cache local já tiver o zip correto, não baixa de novo.
+    """
+    caminho_bin = RAIZ / "ferramentas" / "ffmpeg" / "bin"
+    if (caminho_bin / "ffmpeg.exe").is_file() and (caminho_bin / "ffprobe.exe").is_file():
+        return caminho_bin
+    print("    ffmpeg ausente em", caminho_bin, "— baixando build LGPL do BtbN…")
+    baixar = RAIZ / "instalador" / "baixar_ffmpeg.py"
+    if not baixar.is_file():
+        sys.exit(f"ERRO: não achei o baixador de ffmpeg em {baixar}")
+    rodar([sys.executable, str(baixar)], "baixar_ffmpeg.py")
+    if not (caminho_bin / "ffmpeg.exe").is_file():
+        sys.exit("ERRO: o ffmpeg.exe não apareceu após o download.")
+    return caminho_bin
+
+
 def pasta_nvidia() -> Path:
     """Onde o pip instalou as DLLs de cuBLAS/cuDNN dentro do venv."""
     return Path(sysconfig.get_paths()["purelib"]) / "nvidia"
@@ -138,6 +158,8 @@ def main() -> None:
     if not (RAIZ / "frontend" / "dist" / "index.html").is_file():
         sys.exit("ERRO: a interface não está compilada.\n"
                  "      Rode:  cd frontend && npm install && npm run build")
+
+    caminho_ffmpeg = garantir_ffmpeg()
 
     if argumentos.rapido:
         casca = RAIZ / "casca" / "bin" / "Release" / "net10.0-windows" / "win-x64" / "publish"

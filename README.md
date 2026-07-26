@@ -192,3 +192,20 @@ Distribuído sob a licença **MIT** — livre para usar, modificar e distribuir.
 ## 👤 Autor
 
 Feito por **JP.Neto**.
+
+---
+
+## 📜 Avisos de terceiros
+
+O Transkript.ai redistribui binários e modelos de terceiros (ffmpeg LGPL,
+bibliotecas CUDA NVIDIA CC-BY-4.0, modelos Whisper / Parakeet / pyannote, etc.).
+A lista completa, com licenças e fonte de cada peça, está em
+[`AVISOS_DE_TERCEIROS.txt`](AVISOS_DE_TERCEIROS.txt).
+
+> **Atribuições obrigatórias** (resumo):
+>
+> - NVIDIA cuBLAS/cuDNN e modelos Parakeet/Canary são distribuídos sob
+>   **CC-BY-4.0**. Aviso: *"This software includes components distributed by
+>   NVIDIA Corporation under the Creative Commons Attribution 4.0 license."*
+> - **ffmpeg** é distribuído sob **LGPL 2.1+**; binários vêm do build
+>   win64-lgpl-shared mantido por BtbN.

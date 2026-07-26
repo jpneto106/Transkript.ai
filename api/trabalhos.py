@@ -1,4 +1,4 @@
-"""Fila de transcri├º├úo (1 worker), estado em mem├│ria e cache do modelo carregado."""
+"""Fila de transcrição (1 worker), estado em memória e cache do modelo carregado."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ from nucleo import (
 from . import bd
 from .configuracao import PASTA_DOWNLOADS_APP, PASTA_SAIDA_APP
 
-# Estados poss├¡veis de um job (tamb├®m gravados no banco).
+# Estados possíveis de um job (também gravados no banco).
 NA_FILA = "na_fila"
 BAIXANDO = "baixando"
 CARREGANDO_MODELO = "carregando_modelo"
@@ -45,12 +45,12 @@ _ROTULOS_STATUS = {
     CARREGANDO_MODELO: "Carregando modelo",
     TRANSCREVENDO: "Transcrevendo",
     DIARIZANDO: "Identificando falantes",
-    CONCLUIDO: "Conclu├¡do",
+    CONCLUIDO: "Concluído",
     ERRO: "Erro",
     CANCELADO: "Cancelado",
 }
 
-#: Status em que o job j├í acabou ÔÇö n├úo h├í mais o que cancelar.
+#: Status em que o job já acabou — não há mais o que cancelar.
 STATUS_TERMINAIS = frozenset({CONCLUIDO, ERRO, CANCELADO})
 
 
@@ -62,7 +62,7 @@ class EstadoJob:
     duracao_total: float | None = None
     mensagem: str = ""
     erro: str | None = None
-    versao: int = 0  # incrementa a cada mudan├ºa, para o WebSocket detectar novidade
+    versao: int = 0  # incrementa a cada mudança, para o WebSocket detectar novidade
     cancelado: bool = False  # pedido de cancelamento; lido pelo worker entre trechos
 
     def snapshot(self) -> dict[str, Any]:
@@ -86,12 +86,12 @@ _estados: dict[str, EstadoJob] = {}
 _estados_lock = threading.Lock()
 _executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="transcricao")
 
-# Cache do ├║ltimo modelo carregado, chaveado por (nome, dispositivo, compute_type).
+# Cache do último modelo carregado, chaveado por (nome, dispositivo, compute_type).
 _modelo_cache: dict[tuple[str, str, str], Any] = {}
 _modelo_lock = threading.Lock()
 
-# Cache do modelo de identifica├º├úo de vozes, separado do cache do Whisper: os
-# dois convivem na GPU e limpar um n├úo pode derrubar o outro.
+# Cache do modelo de identificação de vozes, separado do cache do Whisper: os
+# dois convivem na GPU e limpar um não pode derrubar o outro.
 _pipeline_diarizacao: dict[str, Any] = {}
 _pipeline_lock = threading.Lock()
 
@@ -119,18 +119,18 @@ def obter_estado(id_: str) -> dict[str, Any] | None:
 def cancelar_job(id_: str) -> str | None:
     """Pede o cancelamento de um job em andamento.
 
-    Devolve o status do job no momento do pedido, ou None se ele n├úo est├í mais
-    em mem├│ria. O cancelamento n├úo ├® imediato: o worker confere a marca entre um
-    trecho de ├íudio e o seguinte, ent├úo leva no m├íximo alguns segundos.
+    Devolve o status do job no momento do pedido, ou None se ele não está mais
+    em memória. O cancelamento não é imediato: o worker confere a marca entre um
+    trecho de áudio e o seguinte, então leva no máximo alguns segundos.
     """
     with _estados_lock:
         estado = _estados.get(id_)
         if estado is None:
             return None
         if estado.status in STATUS_TERMINAIS:
-            return estado.status  # j├í acabou ÔÇö nada a cancelar
+            return estado.status  # já acabou — nada a cancelar
         estado.cancelado = True
-        estado.mensagem = "CancelandoÔÇª"
+        estado.mensagem = "Cancelando…"
         estado.versao += 1
         return estado.status
 
@@ -142,7 +142,7 @@ def _foi_cancelado(id_: str) -> bool:
 
 
 def _parar_se_cancelado(id_: str) -> None:
-    """Aborta a etapa atual se o usu├írio pediu cancelamento."""
+    """Aborta a etapa atual se o usuário pediu cancelamento."""
     if _foi_cancelado(id_):
         raise TranscricaoCancelada()
 
@@ -151,9 +151,9 @@ def _obter_modelo(nome: str, dispositivo: str, compute_type: str):
     chave = (nome, dispositivo, compute_type)
     with _modelo_lock:
         if chave not in _modelo_cache:
-            # Liberar modelos antigos para n├úo acumular VRAM.
+            # Liberar modelos antigos para não acumular VRAM.
             _modelo_cache.clear()
-            # O motor certo (Whisper ou NVIDIA) ├® escolhido pelo nome do modelo.
+            # O motor certo (Whisper ou NVIDIA) é escolhido pelo nome do modelo.
             _modelo_cache[chave] = carregar_modelo_do_motor(nome, dispositivo, compute_type)
         return _modelo_cache[chave]
 
@@ -172,10 +172,10 @@ def _identificar_falantes(
     dispositivo: str,
     parametros: dict[str, Any],
 ) -> None:
-    """Roda a diariza├º├úo e reagrupa os blocos por falante, no lugar.
+    """Roda a diarização e reagrupa os blocos por falante, no lugar.
 
-    Falhar aqui NUNCA derruba o trabalho: a transcri├º├úo j├í est├í pronta e ├® o que
-    o usu├írio mais quer. Um problema na identifica├º├úo de vozes vira aviso.
+    Falhar aqui NUNCA derruba o trabalho: a transcrição já está pronta e é o que
+    o usuário mais quer. Um problema na identificação de vozes vira aviso.
     """
     _atualizar_estado(id_, status=DIARIZANDO, mensagem=_ROTULOS_STATUS[DIARIZANDO])
     bd.atualizar_transcricao(id_, {"status": DIARIZANDO, "atualizado_em": _agora()})
@@ -202,7 +202,7 @@ def _identificar_falantes(
 
 
 def criar_job(parametros: dict[str, Any]) -> str:
-    """Registra um novo job (no banco e em mem├│ria) e o enfileira. Retorna o id."""
+    """Registra um novo job (no banco e em memória) e o enfileira. Retorna o id."""
     id_ = uuid.uuid4().hex
     agora = _agora()
 
@@ -253,8 +253,8 @@ def _processar_job(id_: str, parametros: dict[str, Any]) -> None:
         arquivos = encontrar_arquivos([entrada], PASTA_DOWNLOADS_APP)
         if not arquivos:
             raise ValueError(
-                "N├úo encontrei nenhum arquivo de ├íudio/v├¡deo v├ílido nessa entrada. "
-                "Verifique se o caminho ou o link est├í correto."
+                "Não encontrei nenhum arquivo de áudio/vídeo válido nessa entrada. "
+                "Verifique se o caminho ou o link está correto."
             )
         arquivo = arquivos[0]
         bd.atualizar_transcricao(
@@ -278,7 +278,7 @@ def _processar_job(id_: str, parametros: dict[str, Any]) -> None:
         _atualizar_estado(id_, status=TRANSCREVENDO, mensagem=_ROTULOS_STATUS[TRANSCREVENDO])
         bd.atualizar_transcricao(id_, {"status": TRANSCREVENDO, "atualizado_em": _agora()})
 
-        # Dicion├írio de termos -> initial_prompt (enviesa o modelo a reconhecer os termos).
+        # Dicionário de termos -> initial_prompt (enviesa o modelo a reconhecer os termos).
         initial_prompt = None
         dic_id = parametros.get("dicionario_id")
         if dic_id:
@@ -308,14 +308,14 @@ def _processar_job(id_: str, parametros: dict[str, Any]) -> None:
             cancelado=lambda: _foi_cancelado(id_),
         )
 
-        # 4) Identificar falantes, se pedido e dispon├¡vel.
+        # 4) Identificar falantes, se pedido e disponível.
         aviso = ""
         if parametros.get("diarizar"):
             _parar_se_cancelado(id_)
             if not diarizacao_disponivel():
                 aviso = (
-                    "A identifica├º├úo de falantes n├úo est├í instalada neste computador; "
-                    "a transcri├º├úo foi feita sem separar as vozes."
+                    "A identificação de falantes não está instalada neste computador; "
+                    "a transcrição foi feita sem separar as vozes."
                 )
             else:
                 try:
@@ -323,11 +323,11 @@ def _processar_job(id_: str, parametros: dict[str, Any]) -> None:
                 except TranscricaoCancelada:
                     raise
                 except Exception as erro_diarizacao:  # noqa: BLE001
-                    # A transcri├º├úo j├í est├í pronta ÔÇö vale mais entreg├í-la com um
+                    # A transcrição já está pronta — vale mais entregá-la com um
                     # aviso do que perder o trabalho todo por causa do extra.
-                    aviso = f"N├úo consegui identificar os falantes: {erro_diarizacao}"
+                    aviso = f"Não consegui identificar os falantes: {erro_diarizacao}"
 
-        # 5) Gravar arquivos de sa├¡da.
+        # 5) Gravar arquivos de saída.
         gerados = escrever_saidas(resultado, PASTA_SAIDA_APP, parametros["formatos"])
 
         bd.atualizar_transcricao(
@@ -352,12 +352,12 @@ def _processar_job(id_: str, parametros: dict[str, Any]) -> None:
         )
 
     except TranscricaoCancelada:
-        # Interrup├º├úo pedida pelo usu├írio ÔÇö n├úo ├® falha, ent├úo nada de tela de erro.
+        # Interrupção pedida pelo usuário — não é falha, então nada de tela de erro.
         bd.atualizar_transcricao(id_, {"status": CANCELADO, "atualizado_em": _agora()})
         _atualizar_estado(id_, status=CANCELADO, mensagem=_ROTULOS_STATUS[CANCELADO])
 
-    except Exception as erro:  # noqa: BLE001 ÔÇö queremos reportar qualquer falha ao usu├írio
-        mensagem = str(erro) or "Ocorreu um erro inesperado durante a transcri├º├úo."
+    except Exception as erro:  # noqa: BLE001 — queremos reportar qualquer falha ao usuário
+        mensagem = str(erro) or "Ocorreu um erro inesperado durante a transcrição."
         bd.atualizar_transcricao(
             id_, {"status": ERRO, "mensagem_erro": mensagem, "atualizado_em": _agora()}
         )

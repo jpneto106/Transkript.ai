@@ -18,7 +18,7 @@
 ; ============================================================================
 
 #define MeuNome        "Transkript.ai"
-#define MinhaVersao    "2.0.0"
+#define MinhaVersao    "3.0.0"
 #define MeuAutor       "JP.Neto"
 #define MeuSite        "https://github.com/jpneto106/Transkript.ai"
 #define MeuExecutavel  "Transkript.ai.exe"
@@ -74,10 +74,14 @@ Name: "desktopicon"; Description: "Criar um atalho na Área de Trabalho"; \
 [Files]
 ; As pastas excluídas nascem do USO do programa, não fazem parte dele. Se a
 ; máquina de compilação tiver sido usada para testar, elas estarão cheias —
-; e sem esta exclusão o instalador sairia carregando modelos de 500 MB e o
-; histórico de transcrições de quem compilou.
+; e sem esta exclusão o instalador sairia carregando o histórico e os arquivos
+; de quem compilou.
+;
+; `modelos` NÃO é excluída de propósito: o empacotador monta essa pasta do zero
+; contendo apenas o modelo de identificação de vozes (32 MB), que vai junto do
+; programa. Os modelos de transcrição continuam sendo baixados pelo usuário.
 Source: "..\dist\{#MeuNome}\*"; DestDir: "{app}"; \
-    Excludes: "\modelos,\dados,\entrada,\saida"; \
+    Excludes: "\dados,\entrada,\saida"; \
     Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]

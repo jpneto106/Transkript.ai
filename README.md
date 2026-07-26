@@ -31,7 +31,7 @@
 >
 > | | |
 > |---|---|
-> | **Arquivo** | `Transkript.ai-2.0.0-instalador.exe` |
+> | **Arquivo** | `Transkript.ai-3.0.0-instalador.exe` |
 > | **Sistema** | Windows 10 ou 11 (64 bits) |
 > | **Administrador** | Não pede senha — instala na sua pasta de usuário |
 > | **Placa de vídeo** | NVIDIA acelera bastante, mas é opcional (sem ela, roda no processador) |
@@ -47,12 +47,16 @@
 ## ✨ O que faz
 
 - **Transcreve vídeos e áudios** (mp4, mkv, mov, mp3, wav, m4a e outros) localmente.
+- **Identifica quem fala** em diálogos, separando o texto por falante.
+- **Dois motores de transcrição**: Whisper (qualquer idioma) e NVIDIA
+  Parakeet/Canary (mais rápidos e leves, com menos idiomas).
 - **Roda na GPU (NVIDIA/CUDA) ou na CPU**, detectando automaticamente o que há disponível.
 - **Aceita arquivo do computador ou link** (YouTube etc., via `yt-dlp`).
 - **Vários formatos de saída**: `TXT` (texto), `SRT` e `VTT` (legendas com tempo) e `JSON` (dados).
 - **Controle do tamanho dos blocos** de legenda (por caracteres e por duração).
 - **Interface gráfica** com tema claro/escuro, histórico das transcrições e gerenciador de modelos.
 - **Dicionários de termos**: cadastre nomes próprios e jargões para o modelo acertar melhor.
+- **Cancele a qualquer momento** e veja a duração do arquivo antes de começar.
 - **Linha de comando** (CLI) para quem preferir automatizar.
 
 > Privacidade: todo o processamento acontece na sua máquina. Seus áudios e vídeos não saem do computador.
@@ -168,9 +172,11 @@ Detalhes em [`COMO_DESINSTALAR.txt`](COMO_DESINSTALAR.txt).
 ## 🗺️ Roadmap
 
 - [x] Instalador `.exe` para Windows (baixar e instalar, sem depender de Python) — como *Release*.
+- [x] Identificação de falantes (diarização), com o modelo já embutido no instalador.
+- [x] Suporte a outros motores de transcrição — NVIDIA Parakeet e Canary, ao lado do Whisper.
+- [ ] Editor da transcrição: corrigir o texto e renomear os falantes ("Falante 1" → "Ana"),
+      com player sincronizado e linha do tempo por participante.
 - [ ] Assinatura digital do instalador (hoje o Windows mostra *"Editor desconhecido"*).
-- [ ] Identificação de falantes (diarização).
-- [ ] Suporte a outros motores de transcrição (NVIDIA NeMo etc.) — ver [`PLANO_MULTIMOTOR.md`](PLANO_MULTIMOTOR.md).
 - [ ] Resumo automático e tradução.
 
 ---

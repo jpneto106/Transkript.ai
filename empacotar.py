@@ -88,6 +88,23 @@ def pasta_nvidia() -> Path:
     return Path(sysconfig.get_paths()["purelib"]) / "nvidia"
 
 
+#: Modelo de identificação de vozes: só 32 MB, então vai junto do programa.
+#: Assim o usuário tem o recurso pronto, sem baixar nada e sem nunca precisar
+#: de conta no Hugging Face (o repositório original é fechado por formulário).
+PASTA_MODELO_VOZES = "models--pyannote--speaker-diarization-community-1"
+
+
+def copiar_modelo_de_vozes(destino: Path) -> None:
+    origem = RAIZ / "modelos" / "hub" / PASTA_MODELO_VOZES
+    if not origem.is_dir():
+        print(f"    AVISO: modelo de vozes não encontrado em {origem}")
+        print("           a diarização ficará indisponível no programa instalado.")
+        return
+    alvo = destino / "modelos" / "hub" / PASTA_MODELO_VOZES
+    shutil.copytree(origem, alvo, dirs_exist_ok=True)
+    print(f"    modelo de vozes: {megabytes(alvo)} MB")
+
+
 def main() -> None:
     analisador = argparse.ArgumentParser(description=__doc__)
     analisador.add_argument("--sem-cuda", action="store_true",
@@ -119,6 +136,7 @@ def main() -> None:
     copiar(RAIZ / "frontend" / "dist", SAIDA / "frontend" / "dist", "interface")
     copiar(RAIZ / "ferramentas" / "ffmpeg" / "bin",
            SAIDA / "ferramentas" / "ffmpeg" / "bin", "ffmpeg")
+    copiar_modelo_de_vozes(SAIDA)
 
     if argumentos.sem_cuda:
         print("    aceleração NVIDIA: pulada (--sem-cuda)")

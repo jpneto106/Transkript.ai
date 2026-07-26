@@ -28,12 +28,38 @@ for pacote in (
     "faster_whisper",    # traz o modelo de detecção de voz (silero VAD)
     "ctranslate2",       # motor do Whisper, cheio de DLLs
     "onnxruntime",
+    "onnx_asr",          # motor NVIDIA (Parakeet/Canary em ONNX)
     "av",                # PyAV: leitura de áudio/vídeo
     "tokenizers",
     "yt_dlp",            # download de links
     "huggingface_hub",   # download dos modelos
+    # --- identificação de falantes (traz o PyTorch junto: é o que mais pesa) ---
+    "pyannote.audio",
+    "pyannote.core",
+    "pyannote.database",
+    "pyannote.pipeline",
+    "torch",
+    "torchaudio",
+    "lightning",
+    "lightning_fabric",
+    "pytorch_lightning",
+    "torchmetrics",
+    "speechbrain",
+    "asteroid_filterbanks",
+    "torch_audiomentations",
+    "torch_pitch_shift",
+    "pytorch_metric_learning",
+    "omegaconf",
+    "hydra",
+    "sentencepiece",
+    "transformers",
 ):
-    pacote_datas, pacote_binaries, pacote_hidden = collect_all(pacote)
+    try:
+        pacote_datas, pacote_binaries, pacote_hidden = collect_all(pacote)
+    except Exception:
+        # Pacote opcional ausente neste ambiente: seguimos sem ele em vez de
+        # abortar a geração inteira.
+        continue
     datas += pacote_datas
     binaries += pacote_binaries
     hiddenimports += pacote_hidden

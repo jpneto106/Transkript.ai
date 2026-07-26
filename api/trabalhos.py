@@ -99,9 +99,9 @@ _pipeline_pre_carregada = False  # True se o pre-load na thread principal deu ce
 # Pré-carrega a pipeline de diarização na thread principal durante o import.
 # ThreadPoolExecutor + PyTorch CUDA podem causar deadlock de contexto —
 # carregar a pipeline aqui evita que ela seja carregada pela primeira vez
-# dentro de uma thread filha. Se falhar, a flag _pipeline_pre_carregada
-# fica False e _obter_pipeline_diarizacao levanta erro em vez de tentar
-# carregar no worker (o que travaria de novo).
+# dentro de uma thread filha. Se falhar (ex.: VM sem GPU, sem modelo), a
+# flag _pipeline_pre_carregada fica False e a diarização é desabilitada
+# em vez de quebrar o servidor.
 if diarizacao_disponivel():
     try:
         _pipeline_diarizacao["cpu"] = carregar_pipeline("cpu")
@@ -111,9 +111,10 @@ if diarizacao_disponivel():
         _pipeline_pre_carregada = True
     except Exception as e:
         import sys, traceback
-        print(f"[DIAR] FALHA ao pre-carregar pipeline: {e}", file=sys.stderr)
+        print(f"[DIAR] AVISO: pipeline nao pre-carregada (provavelmente VM sem GPU ou sem modelo): {e}", file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
         _pipeline_diarizacao.clear()
+        _pipeline_pre_carregada = False
 
 
 def _agora() -> str:

@@ -13,10 +13,16 @@ from typing import Any
 from nucleo import (
     EventoProgresso,
     TranscricaoCancelada,
+    atribuir_falantes,
     carregar_modelo,
+    carregar_pipeline,
     detectar_dispositivo,
+    diarizacao_disponivel,
+    diarizar_arquivo,
     encontrar_arquivos,
     escrever_saidas,
+    montar_blocos,
+    rotulos_em_ordem,
     transcrever_arquivo,
 )
 
@@ -28,6 +34,7 @@ NA_FILA = "na_fila"
 BAIXANDO = "baixando"
 CARREGANDO_MODELO = "carregando_modelo"
 TRANSCREVENDO = "transcrevendo"
+DIARIZANDO = "diarizando"
 CONCLUIDO = "concluido"
 ERRO = "erro"
 CANCELADO = "cancelado"
@@ -37,6 +44,7 @@ _ROTULOS_STATUS = {
     BAIXANDO: "Baixando arquivo",
     CARREGANDO_MODELO: "Carregando modelo",
     TRANSCREVENDO: "Transcrevendo",
+    DIARIZANDO: "Identificando falantes",
     CONCLUIDO: "Concluído",
     ERRO: "Erro",
     CANCELADO: "Cancelado",
@@ -81,6 +89,11 @@ _executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="transcricao")
 # Cache do último modelo carregado, chaveado por (nome, dispositivo, compute_type).
 _modelo_cache: dict[tuple[str, str, str], Any] = {}
 _modelo_lock = threading.Lock()
+
+# Cache do modelo de identificação de vozes, separado do cache do Whisper: os
+# dois convivem na GPU e limpar um não pode derrubar o outro.
+_pipeline_diarizacao: dict[str, Any] = {}
+_pipeline_lock = threading.Lock()
 
 
 def _agora() -> str:
@@ -142,6 +155,49 @@ def _obter_modelo(nome: str, dispositivo: str, compute_type: str):
             _modelo_cache.clear()
             _modelo_cache[chave] = carregar_modelo(nome, dispositivo, compute_type)
         return _modelo_cache[chave]
+
+
+def _obter_pipeline_diarizacao(dispositivo: str):
+    with _pipeline_lock:
+        if dispositivo not in _pipeline_diarizacao:
+            _pipeline_diarizacao[dispositivo] = carregar_pipeline(dispositivo)
+        return _pipeline_diarizacao[dispositivo]
+
+
+def _identificar_falantes(
+    id_: str,
+    resultado,
+    arquivo: Path,
+    dispositivo: str,
+    parametros: dict[str, Any],
+) -> None:
+    """Roda a diarização e reagrupa os blocos por falante, no lugar.
+
+    Falhar aqui NUNCA derruba o trabalho: a transcrição já está pronta e é o que
+    o usuário mais quer. Um problema na identificação de vozes vira aviso.
+    """
+    _atualizar_estado(id_, status=DIARIZANDO, mensagem=_ROTULOS_STATUS[DIARIZANDO])
+    bd.atualizar_transcricao(id_, {"status": DIARIZANDO, "atualizado_em": _agora()})
+
+    def ao_progredir_diarizacao(fracao: float) -> None:
+        if resultado.duracao:
+            _atualizar_estado(id_, progresso_segundos=min(fracao, 1.0) * resultado.duracao)
+
+    turnos = diarizar_arquivo(
+        _obter_pipeline_diarizacao(dispositivo),
+        arquivo,
+        num_falantes=parametros.get("num_falantes"),
+        ao_progredir=ao_progredir_diarizacao,
+    )
+    _parar_se_cancelado(id_)
+
+    resultado.palavras = atribuir_falantes(resultado.palavras, turnos)
+    resultado.falantes = rotulos_em_ordem(resultado.palavras)
+    resultado.segmentos = montar_blocos(
+        resultado.palavras,
+        max_caracteres=parametros["max_caracteres"],
+        max_duracao=parametros["max_duracao"],
+    )
 
 
 def criar_job(parametros: dict[str, Any]) -> str:
@@ -250,7 +306,26 @@ def _processar_job(id_: str, parametros: dict[str, Any]) -> None:
             cancelado=lambda: _foi_cancelado(id_),
         )
 
-        # 4) Gravar arquivos de saída.
+        # 4) Identificar falantes, se pedido e disponível.
+        aviso = ""
+        if parametros.get("diarizar"):
+            _parar_se_cancelado(id_)
+            if not diarizacao_disponivel():
+                aviso = (
+                    "A identificação de falantes não está instalada neste computador; "
+                    "a transcrição foi feita sem separar as vozes."
+                )
+            else:
+                try:
+                    _identificar_falantes(id_, resultado, arquivo, dispositivo, parametros)
+                except TranscricaoCancelada:
+                    raise
+                except Exception as erro_diarizacao:  # noqa: BLE001
+                    # A transcrição já está pronta — vale mais entregá-la com um
+                    # aviso do que perder o trabalho todo por causa do extra.
+                    aviso = f"Não consegui identificar os falantes: {erro_diarizacao}"
+
+        # 5) Gravar arquivos de saída.
         gerados = escrever_saidas(resultado, PASTA_SAIDA_APP, parametros["formatos"])
 
         bd.atualizar_transcricao(
@@ -269,7 +344,7 @@ def _processar_job(id_: str, parametros: dict[str, Any]) -> None:
         _atualizar_estado(
             id_,
             status=CONCLUIDO,
-            mensagem=_ROTULOS_STATUS[CONCLUIDO],
+            mensagem=aviso or _ROTULOS_STATUS[CONCLUIDO],
             progresso_segundos=resultado.duracao,
             duracao_total=resultado.duracao,
         )

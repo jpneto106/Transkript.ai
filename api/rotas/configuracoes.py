@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
+from nucleo import diarizacao_disponivel
 from nucleo.constantes import FORMATOS_DISPONIVEIS, MODELOS_DISPONIVEIS
 
 from .. import bd
@@ -24,6 +25,10 @@ def opcoes():
         "modelos": MODELOS_DISPONIVEIS,
         "formatos": FORMATOS_DISPONIVEIS,
         "pasta_saida": str(PASTA_SAIDA_APP),
+        # A interface usa isto para habilitar (ou explicar a ausência da) opção
+        # de identificar falantes, em vez de deixar o usuário marcar algo que
+        # não vai funcionar.
+        "diarizacao_disponivel": diarizacao_disponivel(),
     }
 
 

@@ -16,6 +16,8 @@ export interface Opcoes {
   modelos: string[];
   formatos: string[];
   pasta_saida: string;
+  /** Falso quando a biblioteca ou o modelo de vozes não estão instalados. */
+  diarizacao_disponivel: boolean;
 }
 
 export interface ParametrosTranscricao {
@@ -30,6 +32,8 @@ export interface ParametrosTranscricao {
   vad_filter: boolean;
   dicionario_id: string | null;
   diarizar: boolean;
+  /** Null = deixar o modelo descobrir quantas vozes existem. */
+  num_falantes: number | null;
 }
 
 /** Metadados do arquivo escolhido, mostrados antes de transcrever. */

@@ -19,7 +19,11 @@ class CriarTranscricaoRequest(BaseModel):
     beam_size: int = Field(5, ge=1, le=10)
     vad_filter: bool = Field(True, description="Pular trechos de silêncio.")
     dicionario_id: str | None = Field(None, description="Dicionário de termos a usar (initial_prompt).")
-    diarizar: bool = Field(False, description="Identificar falantes (ainda não implementado no motor).")
+    diarizar: bool = Field(False, description="Identificar quem fala em cada trecho.")
+    num_falantes: int | None = Field(
+        None, ge=1, le=20,
+        description="Quantidade de falantes, se conhecida. None = detectar automaticamente.",
+    )
 
 
 class InfoMidiaRequest(BaseModel):

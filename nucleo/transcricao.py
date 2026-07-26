@@ -98,6 +98,9 @@ def transcrever_arquivo(
     resultado.tempo_processamento = time.perf_counter() - inicio_processamento
 
     palavras = extrair_palavras(segmentos_brutos)
+    # Guardadas para a diarização poder remontar os blocos depois, sem precisar
+    # transcrever o áudio outra vez.
+    resultado.palavras = palavras
     resultado.segmentos = montar_blocos(palavras, max_caracteres=max_caracteres, max_duracao=max_duracao)
 
     return resultado

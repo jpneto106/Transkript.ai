@@ -12,12 +12,77 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from nucleo.blocos import montar_blocos
+from nucleo.diarizacao import (
+    TurnoFalante,
+    _renomear_por_ordem_de_fala,
+    atribuir_falantes,
+    rotulos_em_ordem,
+)
 from nucleo.escrita import escrever_saidas, nome_amigavel
 from nucleo.formatacao import Palavra, ResultadoTranscricao, Segmento
 
 
 def _palavra(inicio, fim, texto, falante=None):
     return Palavra(inicio=inicio, fim=fim, texto=texto, falante=falante)
+
+
+# ------------------------------------------------- cruzamento palavra x turno
+
+def test_palavra_recebe_o_falante_que_mais_se_sobrepoe():
+    palavras = [_palavra(0.0, 1.0, " oi"), _palavra(5.0, 6.0, " tchau")]
+    turnos = [
+        TurnoFalante(0.0, 2.0, "FALANTE_01"),
+        TurnoFalante(4.0, 7.0, "FALANTE_02"),
+    ]
+    marcadas = atribuir_falantes(palavras, turnos)
+    assert [p.falante for p in marcadas] == ["FALANTE_01", "FALANTE_02"]
+
+
+def test_sobreposicao_parcial_vence_pela_maior_area():
+    """Palavra em cima da troca de voz fica com quem falou a maior parte dela."""
+    palavras = [_palavra(1.5, 2.5, " meio")]
+    turnos = [
+        TurnoFalante(0.0, 1.8, "FALANTE_01"),  # sobrepõe 0.3s
+        TurnoFalante(1.8, 4.0, "FALANTE_02"),  # sobrepõe 0.7s
+    ]
+    assert atribuir_falantes(palavras, turnos)[0].falante == "FALANTE_02"
+
+
+def test_palavra_fora_de_qualquer_turno_herda_a_anterior():
+    """Respiração ou ruído no meio da fala não pode virar um falante fantasma."""
+    palavras = [
+        _palavra(0.0, 1.0, " oi"),
+        _palavra(2.5, 2.7, " ahn"),   # cai num vão entre turnos
+        _palavra(4.5, 5.0, " certo"),
+    ]
+    turnos = [TurnoFalante(0.0, 2.0, "FALANTE_01"), TurnoFalante(4.0, 6.0, "FALANTE_02")]
+    marcadas = atribuir_falantes(palavras, turnos)
+    assert [p.falante for p in marcadas] == ["FALANTE_01", "FALANTE_01", "FALANTE_02"]
+
+
+def test_sem_turnos_nada_e_marcado():
+    palavras = [_palavra(0.0, 1.0, " oi")]
+    assert atribuir_falantes(palavras, [])[0].falante is None
+
+
+def test_rotulos_seguem_a_ordem_de_quem_falou_primeiro():
+    """O modelo numera as vozes de forma arbitraria; quem fala primeiro vira 1."""
+    turnos = [
+        TurnoFalante(0.0, 2.0, "SPEAKER_07"),
+        TurnoFalante(2.0, 4.0, "SPEAKER_02"),
+        TurnoFalante(4.0, 6.0, "SPEAKER_07"),
+    ]
+    renomeados = _renomear_por_ordem_de_fala(turnos)
+    assert [t.falante for t in renomeados] == ["FALANTE_01", "FALANTE_02", "FALANTE_01"]
+
+
+def test_lista_de_rotulos_na_ordem_de_aparicao():
+    palavras = [
+        _palavra(0, 1, " a", "FALANTE_02"),
+        _palavra(1, 2, " b", "FALANTE_01"),
+        _palavra(2, 3, " c", "FALANTE_02"),
+    ]
+    assert rotulos_em_ordem(palavras) == ["FALANTE_02", "FALANTE_01"]
 
 
 # --------------------------------------------------------------- montar_blocos

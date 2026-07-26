@@ -48,6 +48,14 @@ from .formatacao import (
     formatar_hms,
     formatar_timestamp_legenda,
 )
+from .diarizacao import (
+    TurnoFalante,
+    atribuir_falantes,
+    carregar_pipeline,
+    diarizacao_disponivel,
+    diarizar_arquivo,
+    rotulos_em_ordem,
+)
 from .midia import duracao_segundos, informacoes
 from .transcricao import (
     EventoProgresso,
@@ -69,9 +77,15 @@ __all__ = [
     "Segmento",
     "EventoProgresso",
     "TranscricaoCancelada",
+    "TurnoFalante",
+    "atribuir_falantes",
+    "carregar_pipeline",
+    "diarizacao_disponivel",
+    "diarizar_arquivo",
     "duracao_segundos",
     "informacoes",
     "montar_blocos",
+    "rotulos_em_ordem",
     "extrair_palavras",
     "detectar_dispositivo",
     "baixar_de_url",

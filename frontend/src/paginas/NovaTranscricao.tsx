@@ -50,6 +50,8 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
   const [semVad, setSemVad] = useState(false);
   const [traduzir, setTraduzir] = useState(false);
   const [diarizar, setDiarizar] = useState(false);
+  const [numFalantes, setNumFalantes] = useState<string>("");
+  const [diarizacaoOk, setDiarizacaoOk] = useState<boolean | null>(null);
   const [dicionarioId, setDicionarioId] = useState("");
   const [avancadoAberto, setAvancadoAberto] = useState(false);
 
@@ -101,9 +103,12 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
 
   async function carregar() {
     try {
-      const [ms, cfg, dics] = await Promise.all([api.modelos(), api.config(), api.dicionarios()]);
+      const [ms, cfg, dics, ops] = await Promise.all([
+        api.modelos(), api.config(), api.dicionarios(), api.opcoes(),
+      ]);
       setModelos(ms);
       setDicionarios(dics);
+      setDiarizacaoOk(ops.diarizacao_disponivel);
       const padrao = cfg.modelo_padrao;
       const baixados = ms.filter((m) => m.baixado);
       if (padrao && ms.find((m) => m.nome === padrao)?.baixado) setModelo(padrao);
@@ -208,7 +213,8 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
         max_duracao: maxDuracao,
         vad_filter: !semVad,
         dicionario_id: dicionarioId || null,
-        diarizar,
+        diarizar: diarizar && diarizacaoOk !== false,
+        num_falantes: numFalantes ? Number(numFalantes) : null,
       });
       setIdJob(id);
 
@@ -600,12 +606,40 @@ export default function NovaTranscricao({ aoConcluir, irParaModelos }: Props) {
             </div>
 
             <label className="linha-check">
-              <input type="checkbox" checked={diarizar} onChange={(e) => setDiarizar(e.target.checked)} />
-              Identificar falantes diferentes <span className="tag tag-neutral">em breve</span>
+              <input
+                type="checkbox"
+                checked={diarizar}
+                disabled={diarizacaoOk === false}
+                onChange={(e) => setDiarizar(e.target.checked)}
+              />
+              Identificar falantes diferentes
+              {diarizacaoOk === false && <span className="tag tag-neutral">indisponível</span>}
             </label>
             <div className="check-nota" style={{ marginBottom: "var(--space-3)" }}>
-              Detecta quem fala em diálogos. Será ativado numa próxima atualização.
+              {diarizacaoOk === false ? (
+                <>Este computador não tem o componente de identificação de vozes instalado.</>
+              ) : (
+                <>Separa o texto por quem está falando, como “Falante 1:” e “Falante 2:”. Deixa a transcrição mais demorada.</>
+              )}
             </div>
+
+            {diarizar && diarizacaoOk !== false && (
+              <div className="field" style={{ marginBottom: "var(--space-3)", maxWidth: 280 }}>
+                <label>
+                  Quantas pessoas falam?
+                  <Tooltip texto="Se você souber o número exato, a separação fica mais precisa. Em branco, o programa descobre sozinho." />
+                </label>
+                <input
+                  className="input"
+                  type="number"
+                  min={1}
+                  max={20}
+                  placeholder="Detectar automaticamente"
+                  value={numFalantes}
+                  onChange={(e) => setNumFalantes(e.target.value)}
+                />
+              </div>
+            )}
 
             <label className="linha-check">
               <input type="checkbox" checked={traduzir} onChange={(e) => setTraduzir(e.target.checked)} />

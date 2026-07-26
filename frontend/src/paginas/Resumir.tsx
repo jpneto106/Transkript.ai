@@ -73,11 +73,13 @@ export default function Resumir() {
     try {
       const r = await api.resumir({
         texto,
-        chave_provedor: cfg.resumo_provedor ?? "ollama",
-        chave_api: cfg.resumo_chave_api ?? "",
-        modelo: cfg.resumo_modelo ?? "",
-        estilo: cfg.resumo_estilo ?? "curto",
-        max_tokens: Number(cfg.resumo_max_tokens ?? "1024"),
+        config: {
+          chave_provedor: cfg.resumo_provedor ?? "ollama",
+          chave_api: cfg.resumo_chave_api ?? "",
+          modelo: cfg.resumo_modelo ?? "",
+          estilo: cfg.resumo_estilo ?? "curto",
+          max_tokens: Number(cfg.resumo_max_tokens ?? "1024"),
+        },
       });
       setResumo(r.resumo || "(sem resposta)");
     } catch (e: any) {

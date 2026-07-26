@@ -71,11 +71,13 @@ export const api = {
 
   async resumir(payload: {
     texto: string;
-    chave_provedor: string;
-    chave_api: string;
-    modelo: string;
-    estilo: string;
-    max_tokens: number;
+    config: {
+      chave_provedor: string;
+      chave_api: string;
+      modelo: string;
+      estilo: string;
+      max_tokens: number;
+    };
   }): Promise<{ resumo: string }> {
     return json(
       await fetch(`${BASE}/api/resumos`, {

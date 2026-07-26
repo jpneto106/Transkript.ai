@@ -175,13 +175,53 @@ Detalhes em [`COMO_DESINSTALAR.txt`](COMO_DESINSTALAR.txt).
 
 ## 🗺️ Roadmap
 
+A versão atual é a **3.0.0**. O programa é usável e está publicado, mas segue **em
+construção** — o que vem abaixo é o que está planejado, na ordem em que deve acontecer.
+
+### ✅ Pronto
+
 - [x] Instalador `.exe` para Windows (baixar e instalar, sem depender de Python) — como *Release*.
 - [x] Identificação de falantes (diarização), com o modelo já embutido no instalador.
 - [x] Suporte a outros motores de transcrição — NVIDIA Parakeet e Canary, ao lado do Whisper.
-- [ ] Editor da transcrição: corrigir o texto e renomear os falantes ("Falante 1" → "Ana"),
-      com player sincronizado e linha do tempo por participante.
-- [ ] Assinatura digital do instalador (hoje o Windows mostra *"Editor desconhecido"*).
-- [ ] Resumo automático e tradução.
+- [x] Dicionários de termos, histórico em SQLite e controle dos blocos de legenda.
+
+### 🔜 Próximos passos
+
+- [ ] **Revisão das legendas com IA local (Ollama).** Uma passada opcional de um modelo
+      de linguagem rodando na própria máquina, via [Ollama](https://ollama.com), para
+      arrumar pontuação, capitalização e termos que o reconhecimento de fala errou —
+      sem que o texto saia do computador. O Ollama seria instalado à parte; o programa
+      apenas o detecta e usa se estiver disponível.
+- [ ] **Resumo automático da transcrição**, pelo mesmo caminho local do Ollama.
+      Desligado por padrão: transcrever nunca dispara o resumo sozinho.
+- [ ] **Editor da transcrição**: corrigir o texto e renomear os falantes
+      ("Falante 1" → "Ana"), com player sincronizado e linha do tempo por participante.
+- [ ] **Mais formatos de saída**: `HTML`, `Word (.docx)` e `PDF`, além dos quatro atuais.
+- [ ] **Presets de legenda para redes sociais** — blocos já ajustados para reels,
+      shorts e vídeos curtos, sem precisar calcular caracteres e duração na mão.
+- [ ] **Instalador menor.** Hoje o pacote é grande por causa das bibliotecas CUDA e do
+      ffmpeg embutidos. A ideia é usar um build enxuto do ffmpeg, reduzir o runtime da
+      janela e baixar sob demanda só o que cada máquina precisa — quem não tem placa
+      NVIDIA não precisaria carregar as bibliotecas dela.
+- [ ] **Liberar o modelo da memória** quando o programa fica um tempo parado.
+- [ ] **Assinatura digital do instalador** (hoje o Windows mostra *"Editor desconhecido"*).
+
+### 🧭 Mais adiante
+
+- [ ] **Tradução** da transcrição.
+- [ ] **Gravar do microfone e transcrever ao vivo**, incluindo o som do sistema. É o
+      item mais caro da lista: exige um pipeline de streaming que o programa ainda não
+      tem, já que hoje tudo parte de um arquivo com duração conhecida.
+
+### 🚫 Fora do escopo (por decisão)
+
+Coisas que programas parecidos têm e que aqui foram deliberadamente descartadas:
+
+- **Telemetria de uso** — nenhuma, em nenhuma hipótese.
+- **Atalho global e deep-link** (`transkript://`) — exigiriam escrever no registro do
+  Windows, o que quebraria a promessa de que desinstalar é apagar a pasta.
+- **Expor a API do programa para fora da máquina** — provocaria aviso de firewall
+  por algo que este público não pediu.
 
 ---
 

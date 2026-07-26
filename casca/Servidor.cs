@@ -70,8 +70,17 @@ internal sealed class Servidor : IDisposable
             };
         }
 
-        var python = Path.Combine(_raiz, "venv", "Scripts", "python.exe");
-        if (File.Exists(python))
+        // Em desenvolvimento pode haver mais de um ambiente Python. O da v3
+        // (com a identificação de falantes) tem prioridade; o antigo continua
+        // servindo para rodar a versão anterior sem as bibliotecas pesadas.
+        var python = "";
+        foreach (var pasta in new[] { "venv-v3", "venv" })
+        {
+            var candidato = Path.Combine(_raiz, pasta, "Scripts", "python.exe");
+            if (File.Exists(candidato)) { python = candidato; break; }
+        }
+
+        if (python.Length > 0)
         {
             Log($"modo desenvolvimento, usando: {python}");
             var info = new ProcessStartInfo(python)

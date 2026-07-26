@@ -5,22 +5,39 @@ from __future__ import annotations
 import threading
 import time
 
-from nucleo.constantes import MODELOS_DISPONIVEIS
+from nucleo.constantes import (
+    IDIOMAS_DO_MODELO,
+    MODELOS_DISPONIVEIS,
+    motor_do_modelo,
+    repositorio_do_modelo,
+)
 
 # Metadados amigáveis por modelo, para a interface explicar o trade-off ao usuário.
 # tamanho_aprox_mb é só uma referência de download; o tamanho real em disco vem do cache.
 INFO_MODELOS = {
+    # --- Whisper (OpenAI/Systran): entendem praticamente qualquer idioma ---
     "tiny":     {"rotulo": "Tiny",      "resumo": "Muito rápido, qualidade básica",        "tamanho_aprox_mb": 75,   "recomendado": False},
     "base":     {"rotulo": "Base",      "resumo": "Rápido, qualidade razoável",             "tamanho_aprox_mb": 145,  "recomendado": False},
     "small":    {"rotulo": "Small",     "resumo": "Rápido e boa qualidade (recomendado)",   "tamanho_aprox_mb": 480,  "recomendado": True},
     "medium":   {"rotulo": "Medium",    "resumo": "Mais lento, ótima qualidade",            "tamanho_aprox_mb": 1500, "recomendado": False},
     "large-v2": {"rotulo": "Large v2",  "resumo": "Lento, qualidade máxima",                "tamanho_aprox_mb": 3000, "recomendado": False},
     "large-v3": {"rotulo": "Large v3",  "resumo": "Lento, a melhor qualidade",              "tamanho_aprox_mb": 3000, "recomendado": False},
+    # --- NVIDIA: muito rápidos, porém com menos idiomas ---
+    "parakeet-v3":  {"rotulo": "Parakeet v3 (NVIDIA)", "resumo": "Muito rápido e leve, ótimo em português", "tamanho_aprox_mb": 640,  "recomendado": False},
+    "canary-v2":    {"rotulo": "Canary v2 (NVIDIA)",   "resumo": "Qualidade alta, entende português",       "tamanho_aprox_mb": 980,  "recomendado": False},
+    "parakeet-v2":  {"rotulo": "Parakeet v2 (NVIDIA)", "resumo": "O mais rápido — porém só em inglês",     "tamanho_aprox_mb": 630,  "recomendado": False},
+}
+
+#: Texto que a interface mostra no lugar do código de idioma.
+_ROTULO_IDIOMAS = {
+    "*": "Qualquer idioma",
+    "europeus": "Português e mais 24 idiomas europeus",
+    "en": "Somente inglês",
 }
 
 
 def _repo_id(nome: str) -> str:
-    return f"Systran/faster-whisper-{nome}"
+    return repositorio_do_modelo(nome)
 
 
 # Cache da varredura do disco (scan_cache_dir é lento). Curto TTL; invalidado ao
@@ -78,6 +95,10 @@ def listar_modelos(modelo_padrao: str | None) -> list[dict]:
                 "baixado": bytes_disco is not None,
                 "tamanho_disco_mb": round(bytes_disco / (1024 * 1024), 1) if bytes_disco else None,
                 "e_padrao": nome == modelo_padrao,
+                # Motor e idiomas: a interface agrupa por motor e deixa
+                # explícito para que idioma cada modelo serve.
+                "motor": motor_do_modelo(nome),
+                "idiomas": _ROTULO_IDIOMAS.get(IDIOMAS_DO_MODELO.get(nome, "*"), "Qualquer idioma"),
             }
         )
     return resultado

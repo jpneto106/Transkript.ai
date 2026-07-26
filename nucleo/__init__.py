@@ -56,7 +56,12 @@ from .diarizacao import (
     diarizar_arquivo,
     rotulos_em_ordem,
 )
-from .midia import duracao_segundos, informacoes
+from .midia import carregar_audio, duracao_segundos, informacoes
+from .motores import (
+    carregar_modelo_do_motor,
+    motores_disponiveis,
+    transcrever_com_motor,
+)
 from .transcricao import (
     EventoProgresso,
     TranscricaoCancelada,
@@ -79,7 +84,11 @@ __all__ = [
     "TranscricaoCancelada",
     "TurnoFalante",
     "atribuir_falantes",
+    "carregar_audio",
+    "carregar_modelo_do_motor",
     "carregar_pipeline",
+    "motores_disponiveis",
+    "transcrever_com_motor",
     "diarizacao_disponivel",
     "diarizar_arquivo",
     "duracao_segundos",

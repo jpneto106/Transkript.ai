@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from nucleo import diarizacao_disponivel
+from nucleo import diarizacao_disponivel, motores_disponiveis
 from nucleo.constantes import FORMATOS_DISPONIVEIS, MODELOS_DISPONIVEIS
 
 from .. import bd
@@ -29,6 +29,10 @@ def opcoes():
         # de identificar falantes, em vez de deixar o usuário marcar algo que
         # não vai funcionar.
         "diarizacao_disponivel": diarizacao_disponivel(),
+        # Quais motores de transcrição este computador consegue rodar. A tela de
+        # Modelos usa isto para avisar quando um motor não está instalado, em vez
+        # de deixar o usuário baixar um modelo que não vai funcionar.
+        "motores": motores_disponiveis(),
     }
 
 

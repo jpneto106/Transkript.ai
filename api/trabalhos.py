@@ -14,7 +14,7 @@ from nucleo import (
     EventoProgresso,
     TranscricaoCancelada,
     atribuir_falantes,
-    carregar_modelo,
+    carregar_modelo_do_motor,
     carregar_pipeline,
     detectar_dispositivo,
     diarizacao_disponivel,
@@ -23,7 +23,7 @@ from nucleo import (
     escrever_saidas,
     montar_blocos,
     rotulos_em_ordem,
-    transcrever_arquivo,
+    transcrever_com_motor,
 )
 
 from . import bd
@@ -153,7 +153,8 @@ def _obter_modelo(nome: str, dispositivo: str, compute_type: str):
         if chave not in _modelo_cache:
             # Liberar modelos antigos para não acumular VRAM.
             _modelo_cache.clear()
-            _modelo_cache[chave] = carregar_modelo(nome, dispositivo, compute_type)
+            # O motor certo (Whisper ou NVIDIA) é escolhido pelo nome do modelo.
+            _modelo_cache[chave] = carregar_modelo_do_motor(nome, dispositivo, compute_type)
         return _modelo_cache[chave]
 
 
@@ -292,7 +293,8 @@ def _processar_job(id_: str, parametros: dict[str, Any]) -> None:
                 duracao_total=evento.duracao_total,
             )
 
-        resultado = transcrever_arquivo(
+        resultado = transcrever_com_motor(
+            parametros["modelo"],
             modelo,
             arquivo,
             idioma=parametros.get("idioma"),

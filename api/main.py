@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import bd
 from .configuracao import ORIGEM_DEV_FRONTEND, PASTA_FRONTEND_DIST, garantir_pastas
-from .rotas import configuracoes, dicionarios, modelos, transcricoes
+from .rotas import configuracoes, dicionarios, modelos, resumos, transcricoes
 
 
 @asynccontextmanager
@@ -35,6 +35,7 @@ def criar_app() -> FastAPI:
     app.include_router(modelos.router, prefix="/api/modelos", tags=["modelos"])
     app.include_router(dicionarios.router, prefix="/api/dicionarios", tags=["dicionarios"])
     app.include_router(configuracoes.router, prefix="/api", tags=["config"])
+    app.include_router(resumos.router, prefix="/api", tags=["resumos"])
 
     # Frontend de produção (só existe depois de `npm run build`).
     if PASTA_FRONTEND_DIST.is_dir():

@@ -52,6 +52,40 @@ export const api = {
     return json(await fetch(`${BASE}/api/config`));
   },
 
+  async atualizarConfig(payload: Record<string, unknown>): Promise<Record<string, string>> {
+    return json(
+      await fetch(`${BASE}/api/config`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }),
+    );
+  },
+
+  async provedoresResumo(): Promise<{
+    provedores: { chave: string; rotulo: string; provedor: string; url_base_padrao: string; modelo_padrao: string; precisa_chave: boolean }[];
+    estilos: { chave: string; rotulo: string }[];
+  }> {
+    return json(await fetch(`${BASE}/api/provedores`));
+  },
+
+  async resumir(payload: {
+    texto: string;
+    chave_provedor: string;
+    chave_api: string;
+    modelo: string;
+    estilo: string;
+    max_tokens: number;
+  }): Promise<{ resumo: string }> {
+    return json(
+      await fetch(`${BASE}/api/resumos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }),
+    );
+  },
+
   async definirModeloPadrao(modelo: string): Promise<Record<string, string>> {
     return json(
       await fetch(`${BASE}/api/config`, {

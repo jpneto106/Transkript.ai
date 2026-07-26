@@ -42,7 +42,48 @@ class CriarTranscricaoResposta(BaseModel):
 
 
 class AtualizarConfigRequest(BaseModel):
-    modelo_padrao: str | None = None
+    """Campos do PUT /api/config.
+
+    Cada atributo é opcional — o front envia só os que o usuário mexeu. O
+    backend persiste cada um via ``bd.definir_config`` (key-value em SQLite).
+    """
+
+    modelo_padrao: str | None = Field(
+        None,
+        description="Modelo Whisper/Parakeet selecionado por padrão em novas transcrições.",
+    )
+    idioma_padrao: str | None = Field(
+        None,
+        description='Código BCP-47 (pt, en, es, …) ou "auto" para detecção.',
+    )
+    formatos_padrao: list[str] | None = Field(
+        None, description='Lista de formatos a gerar por padrão (["txt","srt",…]).',
+    )
+    preset_blocos: str | None = Field(
+        None, description="preset de tamanho do nucleo/blocos.py (padrao/longo/curto/reel/frase).",
+    )
+    diarizar_por_padrao: bool | None = Field(
+        None, description="Marcar 'identificar falantes' por padrão.",
+    )
+    # Resumo por IA (campos achatados; o prefixo "resumo_" distingue do resto)
+    resumo_ativo: bool | None = Field(
+        None, description="Liga/desliga o recurso de resumo por IA. Por padrão desligado.",
+    )
+    resumo_provedor: str | None = Field(
+        None, description="Identificador do provedor (lm_studio, ollama, groq, claude, …).",
+    )
+    resumo_chave_api: str | None = Field(
+        None, description="Chave do provedor. Nunca fica em texto puro dentro do bundle.",
+    )
+    resumo_modelo: str | None = Field(
+        None, description="Nome do modelo no provedor.",
+    )
+    resumo_estilo: str | None = Field(
+        None, description="curto / topicos / frases_chave / executivo",
+    )
+    resumo_max_tokens: int | None = Field(
+        None, ge=128, le=8192, description="Teto de tokens da resposta do modelo.",
+    )
 
 
 class OpcoesResposta(BaseModel):

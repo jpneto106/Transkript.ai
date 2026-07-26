@@ -48,10 +48,26 @@ usa. Ao transcrever, escolha um dicionário: os termos são passados ao modelo c
 (`initial_prompt`), ajudando-o a acertar essas palavras. Ex.: um dicionário com "Saitama, One Punch
 Man" faz o modelo grafar esses nomes corretamente.
 
-### Sobre "Identificar falantes diferentes" (diarização)
-A opção existe nas Opções avançadas, marcada como **"em breve"**. Identificar quem fala em diálogos
-exige um segundo modelo de IA (pyannote) e configuração extra; será ativado numa próxima
-atualização. Por enquanto a caixa fica visível para você saber que está no caminho.
+### 🗣️ Identificar falantes diferentes (diarização)
+Em **Opções avançadas**, marque *"Identificar falantes diferentes"* para separar o texto por quem
+está falando. A transcrição sai assim:
+
+```
+Falante 1: Qual que é sua rotina?
+Falante 2: Ué, os caras já te xingam, como que é?
+```
+
+Funciona nos quatro formatos: no TXT as falas seguidas da mesma pessoa viram parágrafos, no SRT e
+no VTT o nome vira prefixo da legenda, e o JSON traz o falante de cada trecho.
+
+Se você souber **quantas pessoas falam**, informe no campo que aparece ao marcar a opção — a
+separação fica mais precisa. Em branco, o programa descobre sozinho.
+
+Custo: cerca de **4% da duração do áudio** a mais (um podcast de 8 minutos leva ~17 segundos
+extras). Aparece como uma etapa própria, *"Identificando falantes"*, depois da transcrição.
+
+Limites honestos: vozes muito parecidas, pessoas falando ao mesmo tempo e áudio ruim confundem a
+identificação. O resultado é ótimo para entrevistas e reuniões, mas não é infalível.
 
 ---
 

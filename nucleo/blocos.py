@@ -59,3 +59,37 @@ def extrair_palavras(segmentos_whisper) -> list[Palavra]:
         else:
             palavras.append(Palavra(inicio=seg.start, fim=seg.end, texto=f" {seg.text.strip()}"))
     return palavras
+
+
+# ============================================================ presets (Etapa 7)
+
+#: Presets de tamanho de bloco para o ``montar_blocos``. Cada preset é um par
+#: ``(max_caracteres, max_duracao)`` calibrado para um caso de uso diferente.
+#: O frontend expõe isso na aba "Nova transcrição"; mudanças aqui viram ajuste
+#: sem precisar mexer no código da interface.
+PRESETS_BLOCOS: dict[str, tuple[int, float]] = {
+    # Padrão: vídeos longos, podcasts, palestras. Limite confortável para
+    # legendas desktop e leitura corrida no editor.
+    "padrao":      (80, 4.0),
+    # Texto corrido mais largo: monitor grande, leitura rápida.
+    "longo":       (90, 5.0),
+    # Frase curta por bloco: ideal para legendagem tradicional em PT-BR.
+    "curto":       (50, 2.5),
+    # Reel / Short / TikTok: legenda tem que caber em 2 linhas no celular e
+    # não pode ficar mais de ~1,4 s na tela. Junta com o Vibe.
+    "reel":        (24, 1.4),
+    # Bloco bem largo para uma frase inteira por linha: usa o limite de
+    # duração como o teto principal, não o número de caracteres.
+    "frase":       (120, 7.0),
+}
+
+
+def parametros_do_preset(nome: str) -> tuple[int, float]:
+    """Devolve ``(max_caracteres, max_duracao)`` para o preset, ou o padrão se não conhecer."""
+    return PRESETS_BLOCOS.get(nome, PRESETS_BLOCOS["padrao"])
+
+
+def montar_blocos_com_preset(palavras: list[Palavra], nome_preset: str) -> list[Segmento]:
+    """Atalho para ``montar_blocos`` usando um preset nomeado."""
+    max_caracteres, max_duracao = parametros_do_preset(nome_preset)
+    return montar_blocos(palavras, max_caracteres=max_caracteres, max_duracao=max_duracao)

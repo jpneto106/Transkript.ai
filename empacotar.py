@@ -20,7 +20,9 @@ pasta (ou desinstalar) leve tudo junto.
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
+import stat
 import subprocess
 import sys
 import sysconfig
@@ -32,6 +34,26 @@ SAIDA = RAIZ / "dist" / "Transkript.ai"
 
 def passo(titulo: str) -> None:
     print(f"\n>>> {titulo}", flush=True)
+
+
+def remover_arvore(caminho: Path) -> None:
+    """Apaga uma pasta inteira, mesmo com arquivos somente-leitura.
+
+    Vários arquivos vindos do site-packages chegam com o atributo de
+    somente-leitura, e o `rmtree` do Python falha neles com "Acesso negado".
+    Aqui tiramos o atributo e tentamos de novo.
+    """
+    if not caminho.exists():
+        return
+
+    def _forcar(funcao, alvo, _erro):
+        try:
+            os.chmod(alvo, stat.S_IWRITE)
+            funcao(alvo)
+        except OSError:
+            pass
+
+    shutil.rmtree(caminho, onexc=_forcar)
 
 
 def megabytes(pasta: Path) -> int:
@@ -126,8 +148,7 @@ def main() -> None:
         servidor = compilar_servidor()
 
     passo(f"Montando {SAIDA}")
-    if SAIDA.exists():
-        shutil.rmtree(SAIDA)
+    remover_arvore(SAIDA)
     SAIDA.mkdir(parents=True)
 
     copiar(casca, SAIDA, "casca (janela)")

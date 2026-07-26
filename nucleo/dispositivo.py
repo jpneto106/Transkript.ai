@@ -24,9 +24,31 @@ def _pastas_dlls_nvidia() -> list[str]:
 
     do_venv = Path(sys.prefix) / "Lib" / "site-packages" / "nvidia"
     if do_venv.is_dir():
-        return [str(p) for p in do_venv.glob("*/bin") if p.is_dir()]
+        pastas = [str(p) for p in do_venv.glob("*/bin") if p.is_dir()]
+        if pastas:
+            return pastas
+
+    # O PyTorch (instalado junto com a identificação de falantes) traz as suas
+    # próprias cópias de cuDNN/cuBLAS, e elas servem para o ctranslate2 também.
+    # Sem isto, o programa empacotado cairia para o processador em silêncio —
+    # justamente o tipo de falha muda que mais custa a diagnosticar.
+    for base in _bases_de_busca():
+        biblioteca_torch = base / "torch" / "lib"
+        if biblioteca_torch.is_dir() and any(biblioteca_torch.glob("cudnn*.dll")):
+            return [str(biblioteca_torch)]
 
     return []
+
+
+def _bases_de_busca() -> list[Path]:
+    """Onde procurar pacotes Python: no pacote empacotado e no ambiente normal."""
+    bases: list[Path] = []
+    interno = getattr(sys, "_MEIPASS", None)
+    if interno:
+        bases.append(Path(interno))
+    bases.append(Path(sys.executable).resolve().parent / "_internal")
+    bases.append(Path(sys.prefix) / "Lib" / "site-packages")
+    return [b for b in bases if b.is_dir()]
 
 
 def _registrar_dlls_nvidia() -> None:

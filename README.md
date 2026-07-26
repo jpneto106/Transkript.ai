@@ -104,7 +104,7 @@ Python, Node.js, ffmpeg e as bibliotecas CUDA já vão dentro do pacote.
 ```bash
 # 1) Crie o ambiente Python e instale as dependências
 python -m venv venv
-venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-api.txt
+venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-api.txt -r requirements-extras.txt
 
 # 2) Compile a interface
 cd frontend
@@ -113,11 +113,20 @@ npm run build
 cd ..
 ```
 
-Se for usar GPU NVIDIA no Windows, instale também as bibliotecas CUDA usadas pelo motor:
+**O que vem em cada arquivo de requisitos:**
 
-```bash
-venv\Scripts\python.exe -m pip install nvidia-cublas-cu12 nvidia-cudnn-cu12
-```
+- `requirements.txt` — Whisper (`faster-whisper`), rich, yt-dlp
+- `requirements-api.txt` — FastAPI, Uvicorn, python-docx, fpdf2, e as
+  bibliotecas CUDA 12 (`nvidia-cublas-cu12`, `nvidia-cudnn-cu12`) que
+  o onnxruntime precisa para rodar Parakeet/Canary. Sem GPU, esses
+  pacotes ficam instalados mas inativos.
+- `requirements-extras.txt` — `pyannote.audio` (traz PyTorch junto) para
+  **identificação de falantes**. É opcional: quem só quer transcrever
+  com Whisper pode pular.
+
+Se você não quer diarização, basta não instalar o `extras`. Se você
+estiver no Linux/macOS e for usar GPU NVIDIA, instale o CUDA Toolkit
+correspondente do site da NVIDIA.
 
 ---
 

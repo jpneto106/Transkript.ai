@@ -1,0 +1,22 @@
+"""Dependências OPCIONAIS do Transkript.ai v4.
+
+Quem usa só o Whisper (CPU ou GPU) não precisa instalar nada daqui.
+
+Quem usa **identificação de falantes (diarização)**, sim. O pyannote.audio
+traz o PyTorch junto (~2,5 GB), mas só baixa o que for usar. O modelo
+(``pyannote/speaker-diarization-community-1``, 32 MB) é baixado uma única
+vez e guardado em ``<app>/modelos/hub/`` — sem precisar de conta no
+Hugging Face.
+
+Instale com:
+
+    venv\\Scripts\\pip.exe install -r requirements-extras.txt
+
+Para desinstalar, basta remover o pacote; o modelo em ``modelos/`` fica
+como resíduo (pode apagar a pasta para liberar 32 MB).
+"""
+
+# Pacote de diarização: pyannote/WhisperX. O único ponto de entrada é
+# ``nucleo.diarizacao`` — o resto do programa nem importa este pacote.
+# ``pyannote.audio`` puxa torch e torchaudio como dependências.
+pyannote.audio>=3.1

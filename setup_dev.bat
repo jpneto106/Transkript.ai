@@ -20,8 +20,8 @@ if not exist "venv\Scripts\python.exe" (
     )
 )
 
-echo Instalando dependencias Python...
-venv\Scripts\python.exe -m pip install --quiet --disable-pip-version-check -r requirements.txt -r requirements-api.txt
+echo Instalando dependencias Python (núcleo + API + extras: NVIDIA CUDA, pyannote)...
+venv\Scripts\python.exe -m pip install --quiet --disable-pip-version-check -r requirements.txt -r requirements-api.txt -r requirements-extras.txt
 if errorlevel 1 (
     echo AVISO: pip install retornou erro. Pode ser instabilidade de rede — rode de novo.
 )

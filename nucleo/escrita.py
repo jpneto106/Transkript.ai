@@ -165,43 +165,56 @@ def _escrever_pdf(
 ) -> Path:
     """Gera um PDF de uma página por segmento, com fonte sem-serifa embutida."""
     try:
-        from fpdf import FPDF  # type: ignore
+        from fpdf import FPDF
+        try:
+            # API moderna do fpdf2 (>= 2.5.2) usa posições nomeadas em vez de ln=.
+            from fpdf.enums import XPos, YPos
+        except ImportError:
+            XPos = YPos = None
     except ImportError as erro:
         raise RuntimeError(
             "Para gerar .pdf é preciso instalar 'fpdf2' (pip install fpdf2)."
         ) from erro
 
+    def _quebrar(celula, texto, h=5):
+        if XPos is not None:
+            celula.multi_cell(0, h, texto, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        else:
+            celula.multi_cell(0, h, texto)  # type: ignore[arg-type]
+
+    def _linha(celula, texto, h=5):
+        if XPos is not None:
+            celula.cell(0, h, texto, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        else:
+            celula.cell(0, h, texto, ln=1)  # type: ignore[arg-type]
+
     pdf = FPDF(orientation="P", unit="mm", format="A4")
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-    # Fonte padrão do fpdf2 (Helvetica) já cobre acentos latinos com a codificação
-    # latin-1; quando o texto tem isso, saímos bem.
     pdf.set_font("Helvetica", size=11)
 
-    pdf.cell(0, 8, f"Transcricao de {resultado.arquivo.name}", ln=1)
+    _linha(pdf, f"Transcricao de {resultado.arquivo.name}", h=8)
     pdf.set_font("Helvetica", size=9)
-    pdf.cell(0, 5, f"Idioma: {resultado.idioma or '—'}   Duracao: {_duracao_hms(resultado.duracao)}", ln=1)
+    _linha(pdf, f"Idioma: {resultado.idioma or '—'}   Duracao: {_duracao_hms(resultado.duracao)}", h=5)
     pdf.ln(2)
     pdf.set_font("Helvetica", size=11)
 
     if tem_falantes:
         pdf.set_font("Helvetica", "B", 11)
-        pdf.cell(0, 6, "Falantes", ln=1)
+        _linha(pdf, "Falantes", h=6)
         pdf.set_font("Helvetica", size=11)
         for rotulo in resultado.falantes:
-            pdf.cell(0, 5, f"  - {nome_amigavel(rotulo, None)}", ln=1)
+            _linha(pdf, f"  - {nome_amigavel(rotulo, None)}", h=5)
         pdf.ln(2)
         pdf.set_font("Helvetica", "B", 11)
-        pdf.cell(0, 6, "Segmentos", ln=1)
+        _linha(pdf, "Segmentos", h=6)
         pdf.set_font("Helvetica", size=11)
 
     for seg in resultado.segmentos:
         ts = f"[{formatar_timestamp_legenda(seg.inicio, '.')} --> {formatar_timestamp_legenda(seg.fim, '.')}]"
         texto = seg.texto.strip()
         linha = f"{ts} {rotulo_de(seg)}: {texto}" if seg.falante else f"{ts} {texto}"
-        # fpdf2 aceita acentos; latin-1 cobre o básico para pt-BR sem precisar
-        # carregar TTF. Texto muito longo quebra automaticamente entre linhas.
-        pdf.multi_cell(0, 5, linha)
+        _quebrar(pdf, linha, h=5)
         pdf.ln(1)
 
     caminho = base.with_suffix(".pdf")

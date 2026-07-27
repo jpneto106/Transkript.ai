@@ -43,8 +43,10 @@
 > **[Releases](https://github.com/jpneto106/Transkript.ai/releases)**, e o que mudou
 > em cada uma está no **[CHANGELOG](CHANGELOG.md)**.</sub>
 >
-> <sub>O Windows pode mostrar um aviso de *"Editor desconhecido"* — o instalador não é
-> assinado digitalmente. Clique em **Mais informações → Executar assim mesmo**.</sub>
+> <sub>O Windows pode mostrar um aviso de *"Editor desconhecido"* ou *"Windows protegeu o computador"* —
+> o instalador **não é assinado digitalmente** (certificado custa ~US$ 300/ano e somos open source).
+> É um **falso positivo**: o programa só baixa do GitHub por HTTPS com hash sha256 conferido.
+> Clique em **Mais informações → Executar assim mesmo**.</sub>
 
 ---
 
@@ -234,7 +236,6 @@ Detalhes em [`COMO_DESINSTALAR.txt`](COMO_DESINSTALAR.txt).
 - [x] Resumo por IA com 7 provedores — opt-in, desligado por padrão (v4).
 - [ ] Editor da transcrição: corrigir o texto e renomear os falantes ("Falante 1" → "Ana"),
       com player sincronizado e linha do tempo por participante.
-- [ ] Assinatura digital do instalador (hoje o Windows mostra *"Editor desconhecido"*).
 
 ---
 
